@@ -76,7 +76,16 @@ class UsuarioController extends Controller
                 'fechahoraA' => now(),
             ]);
 
-            $this->registrarAuditoria('TPersonas', $persona->id_persona, 'I', null, null, null, 'Creacion de persona para nuevo usuario');
+            $valoresPersona = implode('|', [
+                $validated['ci'],
+                $validated['primer_nombre'],
+                $validated['segundo_nombre'] ?? '',
+                $validated['apellido_paterno'],
+                $validated['apellido_materno'] ?? '',
+                $validated['fecha_nacimiento'] ?? '',
+                $validated['telefono'] ?? '',
+            ]);
+            $this->registrarAuditoria('TPersonas', $persona->id_persona, 'I', null, null, $valoresPersona, 'Creacion de persona para nuevo usuario');
 
             $empleado = Empleado::create([
                 'id_persona' => $persona->id_persona,
@@ -88,7 +97,12 @@ class UsuarioController extends Controller
                 'fechahoraA' => now(),
             ]);
 
-            $this->registrarAuditoria('TEmpleados', $empleado->id_empleado, 'I', null, null, null, 'Creacion de empleado para nuevo usuario');
+            $valoresEmpleado = implode('|', [
+                $validated['cargo'],
+                now()->toDateString(),
+                '0',
+            ]);
+            $this->registrarAuditoria('TEmpleados', $empleado->id_empleado, 'I', null, null, $valoresEmpleado, 'Creacion de empleado para nuevo usuario');
 
             $user = User::create([
                 'username' => $validated['username'],
@@ -100,7 +114,11 @@ class UsuarioController extends Controller
                 'fechahoraA' => now(),
             ]);
 
-            $this->registrarAuditoria('TUsuarios', $user->id_usuario, 'I', null, null, null, 'Creacion de usuario');
+            $valoresUsuario = implode('|', [
+                $validated['username'],
+                (string) $validated['id_rol'],
+            ]);
+            $this->registrarAuditoria('TUsuarios', $user->id_usuario, 'I', null, null, $valoresUsuario, 'Creacion de usuario');
 
             DB::commit();
 
@@ -142,19 +160,22 @@ class UsuarioController extends Controller
 
             if ($persona && $request->hasAny(['ci', 'primer_nombre', 'segundo_nombre', 'apellido_paterno', 'apellido_materno', 'fecha_nacimiento', 'telefono'])) {
                 $cambios = [];
+                $camposAudit = [];
+                $valoresAnt = [];
+                $valoresNue = [];
                 foreach (['ci', 'primer_nombre', 'segundo_nombre', 'apellido_paterno', 'apellido_materno', 'fecha_nacimiento', 'telefono'] as $campo) {
                     if ($request->has($campo) && $request->$campo !== $persona->$campo) {
                         $cambios[$campo] = $request->$campo;
+                        $camposAudit[] = $campo;
+                        $valoresAnt[] = $persona->$campo ?? '';
+                        $valoresNue[] = $request->$campo;
                     }
                 }
                 if (!empty($cambios)) {
                     $cambios['usuarioA'] = $usuarioId;
                     $cambios['fechahoraA'] = now();
-                    foreach ($cambios as $campo => $valorNuevo) {
-                        if ($campo === 'usuarioA' || $campo === 'fechahoraA') continue;
-                        $this->registrarAuditoria('TPersonas', $persona->id_persona, 'U', $campo, $persona->$campo, $valorNuevo, 'Actualizacion de persona');
-                    }
                     $persona->update($cambios);
+                    $this->registrarAuditoria('TPersonas', $persona->id_persona, 'U', implode('|', $camposAudit), implode('|', $valoresAnt), implode('|', $valoresNue), 'Actualizacion de persona');
                 }
             }
 
@@ -171,26 +192,34 @@ class UsuarioController extends Controller
             }
 
             $datosUser = [];
+            $camposUserAudit = [];
+            $valoresUserAnt = [];
+            $valoresUserNue = [];
+
             if ($request->has('username') && $request->username !== $user->username) {
                 $datosUser['username'] = $request->username;
+                $camposUserAudit[] = 'username';
+                $valoresUserAnt[] = $user->username;
+                $valoresUserNue[] = $request->username;
             }
             if ($request->filled('password')) {
                 $datosUser['password_hash'] = Hash::make($request->password);
+                $camposUserAudit[] = 'password';
+                $valoresUserAnt[] = '[oculto]';
+                $valoresUserNue[] = '[oculto]';
             }
             if ($request->has('id_rol') && $request->id_rol != $user->id_rol) {
                 $datosUser['id_rol'] = $request->id_rol;
+                $camposUserAudit[] = 'id_rol';
+                $valoresUserAnt[] = (string) $user->id_rol;
+                $valoresUserNue[] = (string) $request->id_rol;
             }
 
             if (!empty($datosUser)) {
                 $datosUser['usuarioA'] = $usuarioId;
                 $datosUser['fechahoraA'] = now();
-                foreach ($datosUser as $campo => $valorNuevo) {
-                    if ($campo === 'usuarioA' || $campo === 'fechahoraA') continue;
-                    $campoReal = $campo === 'password_hash' ? 'password_hash' : $campo;
-                    $valorAnterior = $campoReal === 'password_hash' ? '[oculto]' : $user->$campoReal;
-                    $this->registrarAuditoria('TUsuarios', $user->id_usuario, 'U', $campoReal === 'password_hash' ? 'password' : $campoReal, $valorAnterior, $campoReal === 'password_hash' ? '[oculto]' : $valorNuevo, 'Actualizacion de usuario');
-                }
                 $user->update($datosUser);
+                $this->registrarAuditoria('TUsuarios', $user->id_usuario, 'U', implode('|', $camposUserAudit), implode('|', $valoresUserAnt), implode('|', $valoresUserNue), 'Actualizacion de usuario');
             }
 
             DB::commit();

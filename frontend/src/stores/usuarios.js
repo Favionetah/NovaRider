@@ -61,7 +61,11 @@ export const useUsuariosStore = defineStore('usuarios', () => {
 
   async function eliminar(id) {
     await api.delete(`/usuarios/${id}`)
-    usuarios.value = usuarios.value.filter((u) => u.id_usuario !== id)
+    const user = usuarios.value.find((u) => u.id_usuario === id)
+    if (user) {
+      usuarios.value = usuarios.value.filter((u) => u.id_usuario !== id)
+      usuariosInactivos.value.unshift({ ...user, estadoA: false })
+    }
   }
 
   async function reactivar(id) {

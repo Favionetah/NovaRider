@@ -3,12 +3,14 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import CambiarContrasenaModal from './CambiarContrasenaModal.vue'
+import ConfirmarCerrarSesion from './ConfirmarCerrarSesion.vue'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
 const mostrarModalContrasena = ref(false)
+const mostrarConfirmarCerrar = ref(false)
 
 const navModulos = computed(() =>
   auth.modulosPermitidos.filter(m => m.ruta)
@@ -33,7 +35,14 @@ async function cerrarSesion() {
         <span class="header-title">NovaRider</span>
       </router-link>
 
-      <nav class="header-nav" v-if="navModulos.length > 0">
+      <nav class="header-nav">
+        <router-link
+          to="/"
+          class="nav-link"
+          :class="{ active: route.path === '/' }"
+        >
+          Panel Principal
+        </router-link>
         <router-link
           v-for="m in navModulos"
           :key="m.id"
@@ -57,8 +66,14 @@ async function cerrarSesion() {
       <span class="header-rol-badge" :class="'rol-' + (auth.user?.rol || '').toLowerCase()">
         {{ auth.user?.rol }}
       </span>
-      <button class="btn-logout" @click="cerrarSesion">Cerrar sesi&oacute;n</button>
+      <button class="btn-logout" @click="mostrarConfirmarCerrar = true">Cerrar sesi&oacute;n</button>
     </div>
+
+    <ConfirmarCerrarSesion
+      v-if="mostrarConfirmarCerrar"
+      @confirmar="cerrarSesion"
+      @cancelar="mostrarConfirmarCerrar = false"
+    />
 
     <CambiarContrasenaModal
       v-if="mostrarModalContrasena"
