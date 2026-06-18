@@ -1,49 +1,15 @@
 <script setup>
-import { onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import CambiarContrasenaModal from '@/components/CambiarContrasenaModal.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 
-const modulos = [
-  {
-    nombre: 'Gesti&oacute;n de Usuarios',
-    descripcion: 'Administrar usuarios del sistema',
-    ruta: '/usuarios',
-    color: '#741102',
-  },
-  {
-    nombre: 'Clientes y Veh&iacute;culos',
-    descripcion: 'Registro de clientes y motocicletas',
-    ruta: null,
-    color: '#042D29',
-  },
-  {
-    nombre: 'Taller y Reparaciones',
-    descripcion: '&Oacute;rdenes de trabajo y seguimiento',
-    ruta: null,
-    color: '#042D29',
-  },
-  {
-    nombre: 'Inventario',
-    descripcion: 'Productos, repuestos y stock',
-    ruta: null,
-    color: '#042D29',
-  },
-  {
-    nombre: 'Ventas y Caja',
-    descripcion: 'Registro de ventas y arqueo de caja',
-    ruta: null,
-    color: '#042D29',
-  },
-  {
-    nombre: 'Compras y Reportes',
-    descripcion: 'Proveedores, reservas y empleados',
-    ruta: null,
-    color: '#042D29',
-  },
-]
+const mostrarModalContrasena = ref(false)
+
+const modulos = auth.modulosPermitidos
 
 onMounted(async () => {
   await nextTick()
@@ -73,10 +39,6 @@ function cardLeave(e) {
   <div class="dashboard">
     <header class="dashboard-header">
       <div class="header-left">
-        <!--
-          LOGO PNG: Reemplazar este placeholder por:
-          <img src="/ruta-del-logo.png" alt="NovaRider" class="header-logo-img" />
-        -->
         <div class="header-logo-placeholder">
           <svg viewBox="0 0 48 48" fill="none" class="header-logo-svg">
             <circle cx="24" cy="24" r="22" stroke="#929079" stroke-width="2" fill="none" />
@@ -89,6 +51,13 @@ function cardLeave(e) {
       </div>
 
       <div class="header-right">
+        <button class="btn-cambiar-contrasena" @click="mostrarModalContrasena = true" title="Cambiar contraseña">
+          <svg viewBox="0 0 24 24" fill="none" class="icon-cambiar-contrasena">
+            <rect x="3" y="11" width="18" height="10" rx="2" stroke="currentColor" stroke-width="1.5" />
+            <circle cx="12" cy="16" r="1.5" fill="currentColor" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </button>
         <span class="header-rol-badge" :class="'rol-' + (auth.user?.rol || '').toLowerCase()">
           {{ auth.user?.rol }}
         </span>
@@ -103,11 +72,14 @@ function cardLeave(e) {
       </div>
 
       <section class="modulos-section">
-        <div class="modulos-grid">
+        <div v-if="modulos.length === 0" class="empty-state">
+          <p>No tienes m&oacute;dulos disponibles.</p>
+        </div>
+        <div v-else class="modulos-grid">
           <component
             :is="m.ruta ? 'router-link' : 'div'"
             v-for="m in modulos"
-            :key="m.nombre"
+            :key="m.id"
             :to="m.ruta || undefined"
             class="modulo-card"
             :class="{ 'modulo-card-link': !!m.ruta }"
@@ -136,6 +108,11 @@ function cardLeave(e) {
         </div>
       </section>
     </main>
+
+    <CambiarContrasenaModal
+      v-if="mostrarModalContrasena"
+      @close="mostrarModalContrasena = false"
+    />
   </div>
 </template>
 
@@ -182,9 +159,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Reemplazar por:
-  .header-logo-img { width: 48px; height: auto; }
-  */
 }
 
 .header-logo-svg {
@@ -218,6 +192,30 @@ body {
 .rol-cajero { background: rgba(146, 144, 121, 0.25); color: #FFFFFF; }
 .rol-mecanico { background: rgba(4, 45, 41, 0.3); color: #FFFFFF; }
 .rol-recepcionista { background: rgba(146, 144, 121, 0.2); color: #FFFFFF; }
+
+.btn-cambiar-contrasena {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  color: #FFFFFF;
+  border: 1.5px solid #929079;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cambiar-contrasena:hover {
+  background: #052E2A;
+  border-color: #FFFFFF;
+}
+
+.icon-cambiar-contrasena {
+  width: 18px;
+  height: 18px;
+}
 
 .btn-logout {
   padding: 6px 16px;
@@ -261,6 +259,14 @@ body {
   font-size: 15px;
   color: #929079;
   font-weight: 400;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #929079;
+  font-size: 15px;
 }
 
 /* ── Modulos Grid ── */

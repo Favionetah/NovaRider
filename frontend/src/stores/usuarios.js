@@ -4,6 +4,7 @@ import api from '@/services/api'
 
 export const useUsuariosStore = defineStore('usuarios', () => {
   const usuarios = ref([])
+  const usuariosInactivos = ref([])
   const roles = ref([])
   const loading = ref(false)
   const error = ref(null)
@@ -16,6 +17,19 @@ export const useUsuariosStore = defineStore('usuarios', () => {
       usuarios.value = res.data.usuarios
     } catch (err) {
       error.value = err.response?.data?.message || 'Error al cargar usuarios'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function listarInactivos() {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await api.get('/usuarios?inactivos=1')
+      usuariosInactivos.value = res.data.usuarios
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Error al cargar usuarios inactivos'
     } finally {
       loading.value = false
     }
@@ -50,5 +64,14 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     usuarios.value = usuarios.value.filter((u) => u.id_usuario !== id)
   }
 
-  return { usuarios, roles, loading, error, listar, obtenerRoles, crear, actualizar, eliminar }
+  async function reactivar(id) {
+    await api.put(`/usuarios/${id}/reactivar`)
+    usuariosInactivos.value = usuariosInactivos.value.filter((u) => u.id_usuario !== id)
+  }
+
+  return {
+    usuarios, usuariosInactivos, roles, loading, error,
+    listar, listarInactivos, obtenerRoles,
+    crear, actualizar, eliminar, reactivar,
+  }
 })

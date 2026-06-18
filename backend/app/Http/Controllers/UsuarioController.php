@@ -15,15 +15,22 @@ class UsuarioController extends Controller
 {
     use AuditoriaTrait;
 
-    public function index()
+    public function index(Request $request)
     {
-        $usuarios = User::with('empleado.persona', 'rol')
-            ->where('estadoA', true)
-            ->orderBy('id_usuario')
-            ->get()
-            ->map(function ($user) {
-                return $this->formatearUsuario($user);
-            });
+        $inactivos = $request->boolean('inactivos');
+
+        $query = User::with('empleado.persona', 'rol')
+            ->orderBy('id_usuario');
+
+        if ($inactivos) {
+            $query->where('estadoA', false);
+        } else {
+            $query->where('estadoA', true);
+        }
+
+        $usuarios = $query->get()->map(function ($user) {
+            return $this->formatearUsuario($user);
+        });
 
         return response()->json(['usuarios' => $usuarios]);
     }
@@ -215,6 +222,25 @@ class UsuarioController extends Controller
         $this->registrarAuditoria('TUsuarios', $user->id_usuario, 'U', 'estadoA', '1', '0', 'Desactivacion de usuario');
 
         return response()->json(['message' => 'Usuario desactivado exitosamente']);
+    }
+
+    public function reactivar($id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->estadoA) {
+            return response()->json(['message' => 'El usuario ya está activo'], 422);
+        }
+
+        $user->update([
+            'estadoA' => true,
+            'usuarioA' => auth()->id(),
+            'fechahoraA' => now(),
+        ]);
+
+        $this->registrarAuditoria('TUsuarios', $user->id_usuario, 'U', 'estadoA', '0', '1', 'Reactivacion de usuario');
+
+        return response()->json(['message' => 'Usuario reactivado exitosamente']);
     }
 
     public function roles()

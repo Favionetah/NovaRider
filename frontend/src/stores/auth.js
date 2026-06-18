@@ -9,6 +9,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value)
 
+  const modulosPermitidos = computed(() => {
+    return user.value?.modulos || []
+  })
+
+  function tieneAcceso(ruta) {
+    if (!user.value) return false
+    return modulosPermitidos.value.some(m => m.ruta === ruta)
+  }
+
+  function tieneRol(...roles) {
+    if (!user.value) return false
+    return roles.includes(user.value.id_rol)
+  }
+
   async function login(username, password) {
     loading.value = true
     error.value = null
@@ -48,5 +62,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, loading, error, isAuthenticated, login, logout, fetchUser }
+  async function cambiarContrasena(passwordActual, nuevaPassword) {
+    await api.put('/cambiar-contrasena', {
+      password_actual: passwordActual,
+      password: nuevaPassword,
+      password_confirmation: nuevaPassword,
+    })
+  }
+
+  return {
+    user, loading, error, isAuthenticated,
+    modulosPermitidos, tieneAcceso, tieneRol,
+    login, logout, fetchUser, cambiarContrasena,
+  }
 })

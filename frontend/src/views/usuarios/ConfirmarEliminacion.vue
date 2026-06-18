@@ -36,7 +36,7 @@ const emit = defineEmits(['confirmar', 'cancelar'])
 }
 
 .modal-confirmar {
-  background: #fff;
+  background: #FFFFFF;
   border-radius: 14px;
   padding: 28px;
   width: 100%;
@@ -47,20 +47,21 @@ const emit = defineEmits(['confirmar', 'cancelar'])
 
 .modal-confirmar h3 {
   font-size: 18px;
-  color: #1a1a2e;
+  font-weight: 700;
+  color: #042D29;
   margin-bottom: 12px;
 }
 
 .modal-confirmar p {
   font-size: 14px;
-  color: #6b7280;
+  color: #929079;
   margin-bottom: 8px;
   line-height: 1.5;
 }
 
 .nota {
   font-size: 13px;
-  color: #9ca3af;
+  color: #929079;
   font-style: italic;
 }
 
@@ -73,26 +74,36 @@ const emit = defineEmits(['confirmar', 'cancelar'])
 
 .btn-cancelar {
   padding: 10px 24px;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  background: transparent;
+  color: #929079;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
   font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar:hover {
+  border-color: #929079;
+  color: #042D29;
 }
 
 .btn-confirmar {
   padding: 10px 24px;
-  background: #dc2626;
-  color: #fff;
+  background: #741102;
+  color: #FFFFFF;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .btn-confirmar:hover {
-  background: #b91c1c;
+  background: #8C1503;
 }
 </style>

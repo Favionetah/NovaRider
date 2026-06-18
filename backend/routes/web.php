@@ -15,11 +15,15 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/cambiar-contrasena', [AuthController::class, 'cambiarContrasena']);
 
-    Route::get('/roles', [UsuarioController::class, 'roles']);
-    Route::get('/usuarios', [UsuarioController::class, 'index']);
-    Route::post('/usuarios', [UsuarioController::class, 'store']);
-    Route::get('/usuarios/{id}', [UsuarioController::class, 'show']);
-    Route::put('/usuarios/{id}', [UsuarioController::class, 'update']);
-    Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy']);
+    Route::middleware('role:1')->group(function () {
+        Route::get('/roles', [UsuarioController::class, 'roles']);
+        Route::get('/usuarios', [UsuarioController::class, 'index']);
+        Route::post('/usuarios', [UsuarioController::class, 'store']);
+        Route::get('/usuarios/{id}', [UsuarioController::class, 'show']);
+        Route::put('/usuarios/{id}', [UsuarioController::class, 'update']);
+        Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy']);
+        Route::put('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar']);
+    });
 });

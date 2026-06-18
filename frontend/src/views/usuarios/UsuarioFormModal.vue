@@ -147,7 +147,7 @@ async function guardar() {
 }
 
 .modal-card {
-  background: #fff;
+  background: #FFFFFF;
   border-radius: 14px;
   width: 100%;
   max-width: 600px;
@@ -165,19 +165,23 @@ async function guardar() {
 
 .modal-header h2 {
   font-size: 20px;
-  color: #1a1a2e;
+  font-weight: 700;
+  color: #042D29;
 }
 
 .btn-cerrar {
   background: none;
   border: none;
   font-size: 28px;
-  color: #9ca3af;
+  color: #929079;
   cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1;
+  padding: 0;
 }
 
 .btn-cerrar:hover {
-  color: #374151;
+  color: #741102;
 }
 
 .modal-form {
@@ -185,17 +189,18 @@ async function guardar() {
 }
 
 .mensaje-error {
-  color: #dc2626;
-  background: #fef2f2;
-  padding: 10px;
-  border-radius: 6px;
+  color: #741102;
+  background: #FFF5F5;
+  border-left: 3px solid #741102;
+  padding: 10px 14px;
+  border-radius: 8px;
   margin-bottom: 16px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 fieldset {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1.5px solid #E5E7EB;
+  border-radius: 10px;
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -203,7 +208,7 @@ fieldset {
 legend {
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #042D29;
   padding: 0 8px;
 }
 
@@ -226,22 +231,25 @@ legend {
 .campo label {
   font-size: 13px;
   font-weight: 500;
-  color: #4b5563;
+  color: #042D29;
 }
 
 .campo input,
 .campo select {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  padding: 10px 12px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
   font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: #1F2937;
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .campo input:focus,
 .campo select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #042D29;
+  box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
 }
 
 .modal-footer {
@@ -253,31 +261,41 @@ legend {
 
 .btn-cancelar {
   padding: 10px 20px;
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+  background: transparent;
+  color: #929079;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
   font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar:hover {
+  border-color: #929079;
+  color: #042D29;
 }
 
 .btn-guardar {
   padding: 10px 24px;
-  background: #2563eb;
-  color: #fff;
+  background: #042D29;
+  color: #FFFFFF;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .btn-guardar:hover {
-  background: #1d4ed8;
+  background: #052E2A;
 }
 
 .btn-guardar:disabled {
-  background: #9ca3af;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 </style>

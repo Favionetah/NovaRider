@@ -20,7 +20,12 @@ const router = createRouter({
       path: '/usuarios',
       name: 'usuarios',
       component: () => import('@/views/usuarios/UsuariosView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, roles: [1] },
+    },
+    {
+      path: '/acceso-denegado',
+      name: 'acceso-denegado',
+      component: () => import('@/views/AccesoDenegadoView.vue'),
     },
   ],
 })
@@ -38,6 +43,10 @@ router.beforeEach(async (to) => {
 
   if (to.meta.guest && auth.isAuthenticated) {
     return { name: 'dashboard' }
+  }
+
+  if (to.meta.roles && auth.user && !auth.tieneRol(...to.meta.roles)) {
+    return { name: 'acceso-denegado' }
   }
 })
 
