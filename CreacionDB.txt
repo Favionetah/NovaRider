@@ -1,0 +1,541 @@
+CREATE DATABASE novarider;
+USE novarider;
+
+CREATE TABLE `Persona` (
+  `id_persona` int PRIMARY KEY AUTO_INCREMENT,
+  `ci` varchar(255),
+  `primer_nombre` varchar(255),
+  `segundo_nombre` varchar(255),
+  `apellido_paterno` varchar(255),
+  `apellido_materno` varchar(255),
+  `fecha_nacimiento` date,
+  `telefono` varchar(255)
+);
+
+CREATE TABLE `Empleado` (
+  `id_empleado` int PRIMARY KEY AUTO_INCREMENT,
+  `id_persona` int,
+  `fecha_ingreso` date,
+  `sueldo_base` decimal,
+  `cargo` varchar(255)
+);
+
+CREATE TABLE `Cliente` (
+  `id_cliente` int PRIMARY KEY AUTO_INCREMENT,
+  `id_persona` int,
+  `nit` varchar(255),
+  `direccion` varchar(255)
+);
+
+CREATE TABLE `Usuario` (
+  `id_usuario` int PRIMARY KEY AUTO_INCREMENT,
+  `id_empleado` int UNIQUE,
+  `username` varchar(255),
+  `password_hash` varchar(255)
+);
+
+CREATE TABLE `Motocicleta` (
+  `id_motocicleta` int PRIMARY KEY AUTO_INCREMENT,
+  `id_cliente` int,
+  `placa` varchar(255),
+  `marca` varchar(255),
+  `modelo` varchar(255),
+  `anio` int,
+  `kilometraje` int
+);
+
+CREATE TABLE `FichaTecnica` (
+  `id_ficha` int PRIMARY KEY AUTO_INCREMENT,
+  `id_motocicleta` int UNIQUE,
+  `nro_chasis` varchar(255),
+  `nro_motor` varchar(255),
+  `color` varchar(255),
+  `cilindrada` varchar(255)
+);
+
+CREATE TABLE `OrdenTrabajo` (
+  `id_orden` int PRIMARY KEY AUTO_INCREMENT,
+  `id_motocicleta` int,
+  `id_empleado` int,
+  `nro_orden` varchar(255),
+  `codigo_qr` varchar(255),
+  `fecha_ingreso` date,
+  `fecha_cierre` date,
+  `estado` varchar(255)
+);
+
+CREATE TABLE `HistorialEstado` (
+  `id_historial` int PRIMARY KEY AUTO_INCREMENT,
+  `id_orden` int,
+  `fecha_hora_cambio` datetime,
+  `estado_asignado` varchar(255),
+  `observacion` text
+);
+
+CREATE TABLE `DetalleOrdenTrabajo` (
+  `id_detalle_ot` int PRIMARY KEY AUTO_INCREMENT,
+  `id_orden` int,
+  `id_producto` int,
+  `descripcion_servicio` varchar(255),
+  `cantidad` int,
+  `precio_labor` decimal,
+  `subtotal` decimal
+);
+
+CREATE TABLE `ListaVerificacion` (
+  `id_lista` int PRIMARY KEY AUTO_INCREMENT,
+  `id_orden` int UNIQUE,
+  `frenos_revisados` boolean,
+  `luces_revisadas` boolean,
+  `piezas_ajustadas` boolean,
+  `prueba_ruta` boolean,
+  `fecha_validacion` date
+);
+
+CREATE TABLE `Producto` (
+  `id_producto` int PRIMARY KEY AUTO_INCREMENT,
+  `id_ubicacion` int,
+  `codigo_barras` varchar(255),
+  `nombre` varchar(255),
+  `descripcion` text,
+  `precio_venta` decimal,
+  `stock_fisico` int,
+  `stock_disponible` int,
+  `stock_minimo` int
+);
+
+CREATE TABLE `Estante` (
+  `id_estante` int PRIMARY KEY AUTO_INCREMENT,
+  `numero_estante` int,
+  `pasillo` varchar(255),
+  `descripcion` varchar(255)
+);
+
+CREATE TABLE `Seccion` (
+  `id_seccion` int PRIMARY KEY AUTO_INCREMENT,
+  `id_estante` int,
+  `codigo_seccion` varchar(255),
+  `descripcion` varchar(255)
+);
+
+CREATE TABLE `Ubicacion` (
+  `id_ubicacion` int PRIMARY KEY AUTO_INCREMENT,
+  `id_seccion` int,
+  `nivel` varchar(255)
+);
+
+CREATE TABLE `ModeloCompatible` (
+  `id_modelo` int PRIMARY KEY AUTO_INCREMENT,
+  `marca_moto` varchar(255),
+  `modelo_moto` varchar(255),
+  `anio_inicio` int,
+  `anio_fin` int
+);
+
+CREATE TABLE `ProductoModeloCompatible` (
+  `id_producto` int,
+  `id_modelo` int,
+  PRIMARY KEY (`id_producto`, `id_modelo`)
+);
+
+CREATE TABLE `Compra` (
+  `id_compra` int PRIMARY KEY AUTO_INCREMENT,
+  `id_proveedor` int,
+  `fecha` date,
+  `nro_factura_proveedor` varchar(255),
+  `total_compra` decimal
+);
+
+CREATE TABLE `DetalleCompra` (
+  `id_detalle_compra` int PRIMARY KEY AUTO_INCREMENT,
+  `id_compra` int,
+  `id_producto` int,
+  `cantidad` int,
+  `precio_unitario_compra` decimal,
+  `subtotal` decimal
+);
+
+CREATE TABLE `Proveedor` (
+  `id_proveedor` int PRIMARY KEY AUTO_INCREMENT,
+  `nombre` varchar(255),
+  `telefono` varchar(255),
+  `direccion` varchar(255)
+);
+
+CREATE TABLE `Venta` (
+  `id_venta` int PRIMARY KEY AUTO_INCREMENT,
+  `id_cliente` int,
+  `id_empleado` int,
+  `id_caja` int,
+  `nro_factura` varchar(255),
+  `fecha_hora` datetime,
+  `subtotal` decimal,
+  `descuento` decimal,
+  `total` decimal,
+  `metodo_pago` varchar(255)
+);
+
+CREATE TABLE `DetalleVenta` (
+  `id_detalle_venta` int PRIMARY KEY AUTO_INCREMENT,
+  `id_venta` int,
+  `id_producto` int,
+  `cantidad` int,
+  `precio_unitario_historico` decimal,
+  `subtotal` decimal
+);
+
+CREATE TABLE `Reserva` (
+  `id_reserva` int PRIMARY KEY AUTO_INCREMENT,
+  `id_cliente` int,
+  `fecha_solicitud` date,
+  `fecha_expiracion` date,
+  `estado` varchar(255),
+  `departamento_origen` varchar(255)
+);
+
+CREATE TABLE `DetalleReserva` (
+  `id_detalle_reserva` int PRIMARY KEY AUTO_INCREMENT,
+  `id_reserva` int,
+  `id_producto` int,
+  `cantidad_reservada` int
+);
+
+CREATE TABLE `Envio` (
+  `id_envio` int PRIMARY KEY AUTO_INCREMENT,
+  `id_reserva` int UNIQUE,
+  `empresa_transporte` varchar(255),
+  `nro_guia` varchar(255),
+  `fecha_despacho` date,
+  `estado_envio` varchar(255)
+);
+
+CREATE TABLE `Caja` (
+  `id_caja` int PRIMARY KEY AUTO_INCREMENT,
+  `id_empleado` int,
+  `fecha_apertura` datetime,
+  `fecha_cierre` datetime,
+  `monto_apertura` decimal,
+  `monto_cierre_fisico` decimal,
+  `monto_sistema` decimal,
+  `observacion` text
+);
+
+CREATE TABLE `Turno` (
+  `id_turno` int PRIMARY KEY AUTO_INCREMENT,
+  `id_empleado` int,
+  `fecha` date,
+  `hora_entrada` time,
+  `hora_salida` time,
+  `asistio` boolean,
+  `observacion` text
+);
+
+CREATE TABLE `Planilla` (
+  `id_planilla` int PRIMARY KEY AUTO_INCREMENT,
+  `id_empleado` int,
+  `mes` int,
+  `anio` int,
+  `sueldo_bruto` decimal,
+  `bonos` decimal,
+  `deducciones` decimal,
+  `sueldo_neto` decimal
+);
+
+CREATE TABLE `ReservaVenta` (
+  `id_reserva` int,
+  `id_venta` int,
+  PRIMARY KEY (`id_reserva`, `id_venta`)
+);
+
+ALTER TABLE `Empleado` ADD FOREIGN KEY (`id_persona`) REFERENCES `Persona` (`id_persona`);
+
+ALTER TABLE `Cliente` ADD FOREIGN KEY (`id_persona`) REFERENCES `Persona` (`id_persona`);
+
+ALTER TABLE `Usuario` ADD FOREIGN KEY (`id_empleado`) REFERENCES `Empleado` (`id_empleado`);
+
+ALTER TABLE `Motocicleta` ADD FOREIGN KEY (`id_cliente`) REFERENCES `Cliente` (`id_cliente`);
+
+ALTER TABLE `FichaTecnica` ADD FOREIGN KEY (`id_motocicleta`) REFERENCES `Motocicleta` (`id_motocicleta`);
+
+ALTER TABLE `OrdenTrabajo` ADD FOREIGN KEY (`id_motocicleta`) REFERENCES `Motocicleta` (`id_motocicleta`);
+
+ALTER TABLE `OrdenTrabajo` ADD FOREIGN KEY (`id_empleado`) REFERENCES `Empleado` (`id_empleado`);
+
+ALTER TABLE `HistorialEstado` ADD FOREIGN KEY (`id_orden`) REFERENCES `OrdenTrabajo` (`id_orden`);
+
+ALTER TABLE `DetalleOrdenTrabajo` ADD FOREIGN KEY (`id_orden`) REFERENCES `OrdenTrabajo` (`id_orden`);
+
+ALTER TABLE `DetalleOrdenTrabajo` ADD FOREIGN KEY (`id_producto`) REFERENCES `Producto` (`id_producto`);
+
+ALTER TABLE `ListaVerificacion` ADD FOREIGN KEY (`id_orden`) REFERENCES `OrdenTrabajo` (`id_orden`);
+
+ALTER TABLE `Producto` ADD FOREIGN KEY (`id_ubicacion`) REFERENCES `Ubicacion` (`id_ubicacion`);
+
+ALTER TABLE `Seccion` ADD FOREIGN KEY (`id_estante`) REFERENCES `Estante` (`id_estante`);
+
+ALTER TABLE `Ubicacion` ADD FOREIGN KEY (`id_seccion`) REFERENCES `Seccion` (`id_seccion`);
+
+ALTER TABLE `ProductoModeloCompatible` ADD FOREIGN KEY (`id_producto`) REFERENCES `Producto` (`id_producto`);
+
+ALTER TABLE `ProductoModeloCompatible` ADD FOREIGN KEY (`id_modelo`) REFERENCES `ModeloCompatible` (`id_modelo`);
+
+ALTER TABLE `Compra` ADD FOREIGN KEY (`id_proveedor`) REFERENCES `Proveedor` (`id_proveedor`);
+
+ALTER TABLE `DetalleCompra` ADD FOREIGN KEY (`id_compra`) REFERENCES `Compra` (`id_compra`);
+
+ALTER TABLE `DetalleCompra` ADD FOREIGN KEY (`id_producto`) REFERENCES `Producto` (`id_producto`);
+
+ALTER TABLE `Venta` ADD FOREIGN KEY (`id_cliente`) REFERENCES `Cliente` (`id_cliente`);
+
+ALTER TABLE `Venta` ADD FOREIGN KEY (`id_empleado`) REFERENCES `Empleado` (`id_empleado`);
+
+ALTER TABLE `Venta` ADD FOREIGN KEY (`id_caja`) REFERENCES `Caja` (`id_caja`);
+
+ALTER TABLE `DetalleVenta` ADD FOREIGN KEY (`id_venta`) REFERENCES `Venta` (`id_venta`);
+
+ALTER TABLE `DetalleVenta` ADD FOREIGN KEY (`id_producto`) REFERENCES `Producto` (`id_producto`);
+
+ALTER TABLE `Reserva` ADD FOREIGN KEY (`id_cliente`) REFERENCES `Cliente` (`id_cliente`);
+
+ALTER TABLE `DetalleReserva` ADD FOREIGN KEY (`id_reserva`) REFERENCES `Reserva` (`id_reserva`);
+
+ALTER TABLE `DetalleReserva` ADD FOREIGN KEY (`id_producto`) REFERENCES `Producto` (`id_producto`);
+
+ALTER TABLE `Envio` ADD FOREIGN KEY (`id_reserva`) REFERENCES `Reserva` (`id_reserva`);
+
+ALTER TABLE `Caja` ADD FOREIGN KEY (`id_empleado`) REFERENCES `Empleado` (`id_empleado`);
+
+ALTER TABLE `Turno` ADD FOREIGN KEY (`id_empleado`) REFERENCES `Empleado` (`id_empleado`);
+
+ALTER TABLE `Planilla` ADD FOREIGN KEY (`id_empleado`) REFERENCES `Empleado` (`id_empleado`);
+
+ALTER TABLE `ReservaVenta` ADD FOREIGN KEY (`id_reserva`) REFERENCES `Reserva` (`id_reserva`);
+
+ALTER TABLE `ReservaVenta` ADD FOREIGN KEY (`id_venta`) REFERENCES `Venta` (`id_venta`);
+
+
+/*--------------------------------------------------------------------------------------------------------------------------
+------- DATOS DE AUDITORIA
+--------------------------------------------------------------------------------------------------------------------------*/
+
+
+
+
+ALTER TABLE `Persona`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Empleado`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Cliente`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Usuario`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Motocicleta`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `FichaTecnica`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `OrdenTrabajo`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `HistorialEstado`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `DetalleOrdenTrabajo`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `ListaVerificacion`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Producto`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Estante`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Seccion`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Ubicacion`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `ModeloCompatible`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `ProductoModeloCompatible`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Compra`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `DetalleCompra`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Proveedor`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Venta`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `DetalleVenta`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Reserva`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `DetalleReserva`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Envio`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Caja`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Turno`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `Planilla`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE `ReservaVenta`
+ADD COLUMN `estadoA` BOOLEAN DEFAULT TRUE,
+ADD COLUMN `usuarioA` INT,
+ADD COLUMN `fechahoraA` DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+/*-------------------------------------------------------------------------------------------------
+--- RENOMBRADO DE TABLAS
+----------------------------------------------------------------------------------------------------*/
+
+RENAME TABLE
+Persona TO TPersonas,
+Empleado TO TEmpleados,
+Cliente TO TClientes,
+Usuario TO TUsuarios,
+Motocicleta TO TMotocicletas,
+FichaTecnica TO TFichasTecnicas,
+OrdenTrabajo TO TOrdenesTrabajo,
+HistorialEstado TO THistorialesEstado,
+DetalleOrdenTrabajo TO TDetallesOrdenTrabajo,
+ListaVerificacion TO TListasVerificacion,
+Producto TO TProductos,
+Estante TO TEstantes,
+Seccion TO TSecciones,
+Ubicacion TO TUbicaciones,
+ModeloCompatible TO TModelosCompatibles,
+ProductoModeloCompatible TO TProductosModelosCompatibles,
+Compra TO TCompras,
+DetalleCompra TO TDetallesCompra,
+Proveedor TO TProveedores,
+Venta TO TVentas,
+DetalleVenta TO TDetallesVenta,
+Reserva TO TReservas,
+DetalleReserva TO TDetallesReservas,
+Envio TO TEnvios,
+Caja TO TCajas,
+Turno TO TTurnos,
+Planilla TO TPlanillas,
+ReservaVenta TO TReservasVentas;
+
+/*-------------------------------------------------------------------------------------------------
+--- TABLA DE ROLES
+----------------------------------------------------------------------------------------------------*/
+
+CREATE TABLE TRoles (
+    id_rol INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE TUsuarios
+ADD COLUMN id_rol INT;
+
+ALTER TABLE TUsuarios
+ADD CONSTRAINT FK_Usuarios_Roles
+FOREIGN KEY (id_rol)
+REFERENCES TRoles(id_rol);
+
+
+/*-------------------------------------------------------------------------------------------------
+--- MINI MODIFICACIO AUDITORIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+----------------------------------------------------------------------------------------------------*/
+
+CREATE TABLE `TAuditoriaGeneral` (
+    `idAuditoria` INT PRIMARY KEY AUTO_INCREMENT,
+    `TablaNombre` VARCHAR(100) NOT NULL,
+    `RegistroId` INT NOT NULL,
+    `Accion` CHAR(1) NOT NULL COMMENT 'I=Insert, U=Update, D=Delete',
+    `Campo` VARCHAR(100),
+    `ValorAnterior` TEXT,
+    `ValorNuevo` TEXT,
+    `usuarioA` INT NOT NULL,
+    `fechaHoraA` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `direccionIP` VARCHAR(45),
+    `Detalles` TEXT,
+
+    CONSTRAINT `FK_Auditoria_Usuario`
+        FOREIGN KEY (`usuarioA`)
+        REFERENCES `TUsuarios`(`id_usuario`)
+);
