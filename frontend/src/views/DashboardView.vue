@@ -1,13 +1,8 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import CambiarContrasenaModal from '@/components/CambiarContrasenaModal.vue'
 
-const router = useRouter()
 const auth = useAuthStore()
-
-const mostrarModalContrasena = ref(false)
 
 const modulos = auth.modulosPermitidos
 
@@ -16,15 +11,9 @@ onMounted(async () => {
 
   const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
 
-  tl.from('.dashboard-header', { y: -30, opacity: 0, duration: 0.5 })
-    .from('.welcome-section', { y: 20, opacity: 0, duration: 0.4 }, '-=0.1')
+  tl.from('.welcome-section', { y: 20, opacity: 0, duration: 0.4 })
     .from('.modulo-card', { y: 30, opacity: 0, duration: 0.4, stagger: 0.08 }, '-=0.1')
 })
-
-async function cerrarSesion() {
-  await auth.logout()
-  router.push('/login')
-}
 
 function cardEnter(e) {
   gsap.to(e.currentTarget, { y: -4, boxShadow: '0 12px 32px rgba(0,0,0,0.12)', duration: 0.25, ease: 'power2.out' })
@@ -37,34 +26,6 @@ function cardLeave(e) {
 
 <template>
   <div class="dashboard">
-    <header class="dashboard-header">
-      <div class="header-left">
-        <div class="header-logo-placeholder">
-          <svg viewBox="0 0 48 48" fill="none" class="header-logo-svg">
-            <circle cx="24" cy="24" r="22" stroke="#929079" stroke-width="2" fill="none" />
-            <circle cx="24" cy="24" r="8" fill="#FFFFFF" opacity="0.2" />
-            <path d="M24 4v6M24 38v6M4 24h6M38 24h6" stroke="#929079" stroke-width="1.5" stroke-linecap="round" />
-            <circle cx="24" cy="24" r="3" fill="#741102" />
-          </svg>
-        </div>
-        <span class="header-title">NovaRider</span>
-      </div>
-
-      <div class="header-right">
-        <button class="btn-cambiar-contrasena" @click="mostrarModalContrasena = true" title="Cambiar contraseña">
-          <svg viewBox="0 0 24 24" fill="none" class="icon-cambiar-contrasena">
-            <rect x="3" y="11" width="18" height="10" rx="2" stroke="currentColor" stroke-width="1.5" />
-            <circle cx="12" cy="16" r="1.5" fill="currentColor" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          </svg>
-        </button>
-        <span class="header-rol-badge" :class="'rol-' + (auth.user?.rol || '').toLowerCase()">
-          {{ auth.user?.rol }}
-        </span>
-        <button class="btn-logout" @click="cerrarSesion">Cerrar sesi&oacute;n</button>
-      </div>
-    </header>
-
     <main class="dashboard-content">
       <div class="welcome-section">
         <h1 class="welcome-title">Bienvenido, {{ auth.user?.username }}</h1>
@@ -108,134 +69,16 @@ function cardLeave(e) {
         </div>
       </section>
     </main>
-
-    <CambiarContrasenaModal
-      v-if="mostrarModalContrasena"
-      @close="mostrarModalContrasena = false"
-    />
   </div>
 </template>
 
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #F5F4F0;
-}
-
+<style scoped>
 .dashboard {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* ── Header ── */
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 32px;
-  background: #042D29;
-  color: #FFFFFF;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-logo-placeholder {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.header-logo-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.header-title {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.header-rol-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-.rol-administrador { background: rgba(116, 17, 2, 0.2); color: #FFFFFF; }
-.rol-cajero { background: rgba(146, 144, 121, 0.25); color: #FFFFFF; }
-.rol-mecanico { background: rgba(4, 45, 41, 0.3); color: #FFFFFF; }
-.rol-recepcionista { background: rgba(146, 144, 121, 0.2); color: #FFFFFF; }
-
-.btn-cambiar-contrasena {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: transparent;
-  color: #FFFFFF;
-  border: 1.5px solid #929079;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-cambiar-contrasena:hover {
-  background: #052E2A;
-  border-color: #FFFFFF;
-}
-
-.icon-cambiar-contrasena {
-  width: 18px;
-  height: 18px;
-}
-
-.btn-logout {
-  padding: 6px 16px;
-  background: transparent;
-  color: #FFFFFF;
-  border: 1.5px solid #929079;
-  border-radius: 8px;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-logout:hover {
-  background: #741102;
-  border-color: #741102;
-}
-
-/* ── Content ── */
 .dashboard-content {
   flex: 1;
   padding: 40px 32px;
@@ -261,7 +104,6 @@ body {
   font-weight: 400;
 }
 
-/* ── Empty state ── */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -269,7 +111,6 @@ body {
   font-size: 15px;
 }
 
-/* ── Modulos Grid ── */
 .modulos-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

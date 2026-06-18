@@ -101,15 +101,7 @@ async function reactivarUsuario(id) {
 <template>
   <div class="usuarios-page">
     <header class="page-header">
-      <div class="header-left">
-        <button class="btn-volver" @click="$router.push('/')">
-          <svg viewBox="0 0 24 24" fill="none" class="icon-volver">
-            <path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-          Volver
-        </button>
-        <h1>Gesti&oacute;n de Usuarios</h1>
-      </div>
+      <h1>Gesti&oacute;n de Usuarios</h1>
       <button class="btn-nuevo" @click="abrirCrear">
         <svg viewBox="0 0 24 24" fill="none" class="icon-plus">
           <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
@@ -289,38 +281,6 @@ async function reactivarUsuario(id) {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 28px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.btn-volver {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: transparent;
-  color: #042D29;
-  border: 1.5px solid #D1D5DB;
-  border-radius: 10px;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-volver:hover {
-  border-color: #042D29;
-  background: rgba(4, 45, 41, 0.05);
-}
-
-.icon-volver {
-  width: 16px;
-  height: 16px;
 }
 
 .page-header h1 {

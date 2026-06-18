@@ -66,7 +66,11 @@ export const useUsuariosStore = defineStore('usuarios', () => {
 
   async function reactivar(id) {
     await api.put(`/usuarios/${id}/reactivar`)
-    usuariosInactivos.value = usuariosInactivos.value.filter((u) => u.id_usuario !== id)
+    const user = usuariosInactivos.value.find((u) => u.id_usuario === id)
+    if (user) {
+      usuariosInactivos.value = usuariosInactivos.value.filter((u) => u.id_usuario !== id)
+      usuarios.value.unshift({ ...user, estadoA: true })
+    }
   }
 
   return {
