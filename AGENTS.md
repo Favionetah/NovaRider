@@ -33,6 +33,8 @@ npm run lint      # oxlint --fix . + eslint --fix --cache
 - **Admin login:** `admin` / `admin123` (role: Administrador)
 - `.env` currently configured for MySQL `novarider` database (root/root)
 - Tests use SQLite in-memory (see `phpunit.xml`)
+- **Tables added after DDL:** `TProgramaciones` (id_programacion, id_empleado, dia_semana, hora_entrada, hora_salida, activo, estadoA, usuarioA, fechahoraA)
+- **Columns added after DDL:** `TTurnos` now has `hora_entrada_esperada` and `hora_salida_esperada` (frozen at registration time from TProgramaciones)
 
 ## What is already built (Módulo 1 — Seguridad y Usuarios)
 
@@ -45,6 +47,8 @@ npm run lint      # oxlint --fix . + eslint --fix --cache
 - **Router guard:** `meta.roles` redirige a `/acceso-denegado` si no tiene permiso
 - **Auditoría:** Todas las operaciones registradas en `TAuditoriaGeneral` con formato pipes (`|`)
 - **Fuente global:** Inter + fondo `#F5F4F0` desde `App.vue` (no más Times New Roman al navegar)
+- **Horarios Semanales (TProgramaciones):** Configurar plantilla Lun–Sáb por empleado, planilla global en `/horarios`. Auto‑completación de hora esperada en asistencias según el horario vigente al momento del registro.
+- **Asistencia Automática (TTurnos):** Botón "Registrar Entrada"/"Registrar Salida" desde el card "Hoy". Cruza con TProgramaciones para guardar `hora_entrada_esperada`/`hora_salida_esperada` (congeladas al momento del registro). Columna `minutos_tarde` calculada en backend. Edición manual solo para observaciones (lápiz en cada fila).
 
 ## Architecture
 
@@ -224,14 +228,15 @@ All audit log entries go to `TAuditoriaGeneral` via `AuditoriaTrait::registrarAu
 | `AppHeader` | `components/AppHeader.vue` | Already included in `App.vue`. Provides nav menu, role badge, logout with confirmation, change password. |
 | `CambiarContrasenaModal` | `components/CambiarContrasenaModal.vue` | Import and use with `v-if`. Emits `@close`. |
 | `ConfirmarCerrarSesion` | `components/ConfirmarCerrarSesion.vue` | Emits `@confirmar` and `@cancelar`. |
+| `ProgramacionModal` | `views/usuarios/ProgramacionModal.vue` | Modal para configurar horario semanal (grilla Lun–Sáb, toggle activo, selector hora entrada, auto‑cálculo 6h/8h). Emite `@cerrar` y `@guardado`. |
 
 ### Roles
 
 | id_rol | Nombre | Módulos que ve |
 |---|---|---|
-| 1 | Administrador | Todos |
+| 1 | Administrador | Todos + Horarios |
 | 2 | Cajero | Clientes/Vehículos (consulta), Inventario (consulta), Ventas/Caja |
-| 3 | Mecánico | Clientes/Vehículos, Taller/Reparaciones, Inventario (consulta) |
+| 3 | Mecánico | Clientes/Vehículos, Taller/Reparaciones, Inventario (consulta), Horarios (vista global) |
 | 4 | Recepcionista | Clientes/Vehículos, Taller/Reparaciones (consulta) |
 
 When defining `roles_permitidos` in a module, use these IDs.

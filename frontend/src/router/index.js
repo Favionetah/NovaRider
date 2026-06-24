@@ -23,6 +23,24 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: [1] },
     },
     {
+      path: '/usuarios/:id',
+      name: 'usuario-detalle',
+      component: () => import('@/views/usuarios/UsuarioDetalleView.vue'),
+      meta: { requiresAuth: true, roles: [1] },
+    },
+    {
+      path: '/compras',
+      name: 'compras',
+      component: () => import('@/views/compras/ComprasView.vue'),
+      meta: { requiresAuth: true, roles: [1] },
+    },
+    {
+      path: '/horarios',
+      name: 'horarios',
+      component: () => import('@/views/horarios/HorariosView.vue'),
+      meta: { requiresAuth: true, roles: [1, 3] },
+    },
+    {
       path: '/acceso-denegado',
       name: 'acceso-denegado',
       component: () => import('@/views/AccesoDenegadoView.vue'),

@@ -52,6 +52,7 @@ class UsuarioController extends Controller
             'fecha_nacimiento' => 'nullable|date|before:today',
             'telefono' => 'nullable|string|regex:/^\d{8}$/',
             'cargo' => 'required|string|min:2|max:255',
+            'sueldo_base' => 'nullable|numeric|min:0',
             'username' => 'required|string|min:3|max:255|unique:TUsuarios,username',
             'password' => 'required|string|min:6',
             'roles' => 'required|array',
@@ -83,7 +84,7 @@ class UsuarioController extends Controller
                 'fecha_nacimiento' => $validated['fecha_nacimiento'],
                 'telefono' => $validated['telefono'],
                 'fecha_ingreso' => now()->toDateString(),
-                'sueldo_base' => 0,
+                'sueldo_base' => $validated['sueldo_base'] ?? 0,
                 'cargo' => $validated['cargo'],
                 'estadoA' => true,
                 'usuarioA' => $usuarioId,
@@ -149,6 +150,7 @@ class UsuarioController extends Controller
             'cargo' => 'sometimes|string|min:2|max:255',
             'username' => 'sometimes|string|min:3|max:255|unique:TUsuarios,username,' . $id . ',id_usuario',
             'password' => 'nullable|string|min:6',
+            'sueldo_base' => 'nullable|numeric|min:0',
             'roles' => 'sometimes|array',
             'roles.*' => 'exists:TRoles,id_rol',
         ], [
@@ -171,7 +173,7 @@ class UsuarioController extends Controller
 
             $empleado = $user->empleado;
 
-            if ($empleado && $request->hasAny(['ci', 'primer_nombre', 'segundo_nombre', 'apellido_paterno', 'apellido_materno', 'fecha_nacimiento', 'telefono', 'cargo'])) {
+            if ($empleado && $request->hasAny(['ci', 'primer_nombre', 'segundo_nombre', 'apellido_paterno', 'apellido_materno', 'fecha_nacimiento', 'telefono', 'cargo', 'sueldo_base'])) {
                 $cambios = [];
                 $camposAudit = [];
                 $valoresAnt = [];
@@ -193,6 +195,13 @@ class UsuarioController extends Controller
                     $camposAudit[] = 'cargo';
                     $valoresAnt[] = $empleado->cargo ?? '';
                     $valoresNue[] = $request->cargo;
+                }
+
+                if ($request->has('sueldo_base') && (float) $request->sueldo_base !== (float) $empleado->sueldo_base) {
+                    $cambios['sueldo_base'] = $request->sueldo_base;
+                    $camposAudit[] = 'sueldo_base';
+                    $valoresAnt[] = (string) $empleado->sueldo_base;
+                    $valoresNue[] = (string) $request->sueldo_base;
                 }
 
                 if (!empty($cambios)) {
@@ -322,6 +331,7 @@ class UsuarioController extends Controller
             'rol' => $roles->pluck('nombre')->implode(', '),
             'id_empleado' => $user->id_empleado,
             'cargo' => $empleado?->cargo,
+            'sueldo_base' => $empleado?->sueldo_base ? (float) $empleado->sueldo_base : 0,
             'nombre_completo' => $nombreCompleto,
             'ci' => $empleado?->ci,
             'telefono' => $empleado?->telefono,
@@ -330,6 +340,7 @@ class UsuarioController extends Controller
             'apellido_paterno' => $empleado?->apellido_paterno,
             'apellido_materno' => $empleado?->apellido_materno,
             'fecha_nacimiento' => $empleado?->fecha_nacimiento,
+            'fecha_ingreso' => $empleado?->fecha_ingreso,
             'estadoA' => $user->estadoA,
         ];
     }

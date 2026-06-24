@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useUsuariosStore } from '@/stores/usuarios'
+import { useAuthStore } from '@/stores/auth'
+import ProgramacionModal from './ProgramacionModal.vue'
 
 const props = defineProps({
   usuario: { type: Object, default: null },
@@ -10,9 +12,13 @@ const props = defineProps({
 const emit = defineEmits(['cerrar'])
 
 const store = useUsuariosStore()
+const auth = useAuthStore()
 const esEdicion = computed(() => !!props.usuario)
 const enviando = ref(false)
 const mensajeError = ref('')
+const mostrarHorario = ref(false)
+const horarioGuardado = ref(false)
+const esAdmin = computed(() => auth.tieneRol(1))
 
 function obtenerRolesUsuario() {
   if (!props.usuario?.roles) return []
@@ -42,6 +48,7 @@ const form = ref({
   fecha_nacimiento: props.usuario?.fecha_nacimiento || '',
   telefono: props.usuario?.telefono || '',
   cargo: props.usuario?.cargo || '',
+  sueldo_base: props.usuario?.sueldo_base || 0,
   username: props.usuario?.username || '',
   password: '',
   roles: obtenerRolesUsuario(),
@@ -186,6 +193,10 @@ async function guardar() {
               <input id="cargo" v-model="form.cargo" type="text" required />
               <p v-if="errores.cargo" class="field-error">{{ errores.cargo }}</p>
             </div>
+            <div v-if="esAdmin" class="campo">
+              <label for="sueldo_base">Sueldo Base ($)</label>
+              <input id="sueldo_base" v-model.number="form.sueldo_base" type="number" min="0" step="0.01" />
+            </div>
           </div>
         </fieldset>
 
@@ -221,6 +232,17 @@ async function guardar() {
           </div>
         </fieldset>
 
+        <div v-if="esEdicion" class="horario-section">
+          <hr />
+          <div class="horario-section-inner">
+            <p v-if="horarioGuardado" class="horario-status ok">Horario configurado</p>
+            <p v-else class="horario-status pending">Sin horario semanal</p>
+            <button type="button" class="btn-horario" @click="mostrarHorario = true">
+              Configurar Horario Semanal
+            </button>
+          </div>
+        </div>
+
         <div class="modal-footer">
           <button type="button" class="btn-cancelar" @click="emit('cerrar')">Cancelar</button>
           <button type="submit" class="btn-guardar" :disabled="enviando">
@@ -228,6 +250,16 @@ async function guardar() {
           </button>
         </div>
       </form>
+
+      <Teleport to="body">
+        <ProgramacionModal
+          v-if="mostrarHorario"
+          :id-empleado="props.usuario?.id_usuario"
+          :horario-actual="[]"
+          @cerrar="mostrarHorario = false"
+          @guardado="horarioGuardado = true; mostrarHorario = false"
+        />
+      </Teleport>
     </div>
   </div>
 </template>
@@ -443,4 +475,45 @@ legend {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.horario-section {
+  padding: 16px 0 4px;
+}
+
+.horario-section hr {
+  border: none;
+  border-top: 1px solid #E5E7EB;
+  margin-bottom: 16px;
+}
+
+.horario-section-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.horario-status {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.horario-status.ok { color: #059669; }
+.horario-status.pending { color: #929079; }
+
+.btn-horario {
+  padding: 8px 16px;
+  background: rgba(4,45,41,0.08);
+  color: #042D29;
+  border: 1.5px solid #042D29;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-horario:hover { background: rgba(4,45,41,0.15); }
 </style>

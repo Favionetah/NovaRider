@@ -138,8 +138,8 @@ class AuthController extends Controller
         $modulos = [
             [
                 'id' => 'usuarios',
-                'nombre' => 'Gestión de Usuarios',
-                'descripcion' => 'Administrar usuarios del sistema',
+                'nombre' => 'Gesti&oacute;n de Personal',
+                'descripcion' => 'Usuarios, turnos, planillas y sueldos',
                 'ruta' => '/usuarios',
                 'color' => '#741102',
                 'roles_permitidos' => [1],
@@ -178,11 +178,19 @@ class AuthController extends Controller
             ],
             [
                 'id' => 'compras',
-                'nombre' => 'Compras y Reportes',
-                'descripcion' => 'Proveedores, reservas y empleados',
-                'ruta' => null,
+                'nombre' => 'Compras',
+                'descripcion' => 'Registro de compras y administraci&oacute;n de proveedores',
+                'ruta' => '/compras',
                 'color' => '#042D29',
                 'roles_permitidos' => [1],
+            ],
+            [
+                'id' => 'horarios',
+                'nombre' => 'Horarios',
+                'descripcion' => 'Planilla global de horarios semanales',
+                'ruta' => '/horarios',
+                'color' => '#042D29',
+                'roles_permitidos' => [1, 3],
             ],
         ];
 
