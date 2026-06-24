@@ -1,19 +1,34 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUsuariosStore } from '@/stores/usuarios'
 import UsuarioFormModal from './UsuarioFormModal.vue'
 import ConfirmarEliminacion from './ConfirmarEliminacion.vue'
 
+const router = useRouter()
 const store = useUsuariosStore()
 
 const tabActivo = ref('activos')
 const busqueda = ref('')
 const filtroRol = ref('')
+const stats = ref({ total: 0, activos: 0, turnos_hoy: 0 })
+
+async function cargarStats() {
+  try {
+    const { default: api } = await import('@/services/api')
+    const res = await api.get('/turnos', { params: { fecha: new Date().toISOString().split('T')[0] } })
+    stats.value.turnos_hoy = res.data.turnos.length
+  } catch { /* ignore */ }
+  stats.value.activos = store.usuarios.length
+  stats.value.total = store.usuarios.length + store.usuariosInactivos.length
+}
 
 onMounted(async () => {
   await Promise.all([store.listar(), store.listarInactivos()])
+  await cargarStats()
   await nextTick()
   animarEntrada()
+  gsap.fromTo('.stats-grid', { y: -15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' })
 })
 
 watch(tabActivo, async () => {
@@ -26,6 +41,10 @@ watch(tabActivo, async () => {
 function animarEntrada() {
   gsap.fromTo('.tabla-wrapper', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' })
   gsap.fromTo('.tabla-usuarios tbody tr', { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.04, ease: 'power2.out', delay: 0.15 })
+}
+
+function irADetalle(id) {
+  router.push(`/usuarios/${id}`)
 }
 
 const usuariosFiltrados = computed(() => {
@@ -112,6 +131,36 @@ async function reactivarUsuario(id) {
 
     <p v-if="store.error" class="mensaje-error">{{ store.error }}</p>
 
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-users">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.total }}</span>
+          <span class="stat-label">Total Empleados</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-active">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.activos }}</span>
+          <span class="stat-label">Activos</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-clock">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-value">{{ stats.turnos_hoy }}</span>
+          <span class="stat-label">Turnos Hoy</span>
+        </div>
+      </div>
+    </div>
+
     <div class="content-card">
       <div class="tabs">
         <button
@@ -192,7 +241,7 @@ async function reactivarUsuario(id) {
             <tr v-for="u in usuariosFiltrados" :key="u.id_usuario">
               <td class="col-id">{{ u.id_usuario }}</td>
               <td class="col-emp">
-                <span class="emp-nombre">{{ u.nombre_completo }}</span>
+                <span class="emp-nombre enlace" @click="irADetalle(u.id_usuario)">{{ u.nombre_completo }}</span>
                 <span class="emp-cargo">{{ u.cargo }}</span>
               </td>
               <td class="col-user">{{ u.username }}</td>
@@ -608,6 +657,70 @@ async function reactivarUsuario(id) {
 
 .btn-reactivar:hover {
   background: rgba(4, 45, 41, 0.1);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: #FFFFFF;
+  border-radius: 14px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid #042D29;
+}
+
+.stat-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.stat-icon-users { background: rgba(4, 45, 41, 0.1); color: #042D29; }
+.stat-icon-active { background: rgba(4, 45, 41, 0.08); color: #042D29; }
+.stat-icon-clock { background: rgba(146, 144, 121, 0.15); color: #5C5B4E; }
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #042D29;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #929079;
+  font-weight: 500;
+}
+
+.enlace {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.enlace:hover {
+  color: #741102;
 }
 
 .sin-datos {
