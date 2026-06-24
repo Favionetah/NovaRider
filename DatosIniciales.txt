@@ -1,0 +1,75 @@
+USE novarider;
+
+/* =======================================================
+   ROLES DEL SISTEMA
+======================================================= */
+
+INSERT INTO TRoles (nombre, descripcion)
+VALUES
+('Administrador', 'Acceso total al sistema'),
+('Cajero', 'Gestion de ventas y caja'),
+('Mecanico', 'Gestion de ordenes de trabajo'),
+('Recepcionista', 'Registro y atencion de clientes');
+
+/* =======================================================
+   PERSONA ADMINISTRADOR
+======================================================= */
+
+INSERT INTO TPersonas (
+    ci,
+    primer_nombre,
+    segundo_nombre,
+    apellido_paterno,
+    apellido_materno,
+    fecha_nacimiento,
+    telefono,
+    estadoA
+)
+VALUES (
+    '0000000',
+    'Administrador',
+    NULL,
+    'Sistema',
+    NULL,
+    '2000-01-01',
+    '70000000',
+    TRUE
+);
+
+/* =======================================================
+   EMPLEADO ADMINISTRADOR
+======================================================= */
+
+INSERT INTO TEmpleados (
+    id_persona,
+    fecha_ingreso,
+    sueldo_base,
+    cargo,
+    estadoA
+)
+VALUES (
+    1,
+    CURDATE(),
+    0,
+    'Administrador',
+    TRUE
+);
+
+/* =======================================================
+   USUARIO ADMINISTRADOR
+======================================================= */
+
+INSERT INTO TUsuarios (
+    id_empleado,
+    username,
+    password_hash,
+    id_rol,
+    estadoA
+)
+VALUES (
+    1,
+    'admin',
+    'admin123',
+    1,
+    TRUE
+);

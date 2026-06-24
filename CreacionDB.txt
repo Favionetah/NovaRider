@@ -1,0 +1,497 @@
+-- ============================================================
+-- NovaRider - Esquema completo de base de datos
+-- ============================================================
+-- NOTA: La fuente de verdad para el schema son las migraciones
+-- de Laravel en backend/database/migrations/. Este archivo es
+-- solo una referencia visual del schema actual.
+-- ============================================================
+
+CREATE DATABASE IF NOT EXISTS novarider;
+USE novarider;
+
+-- ============================================================
+-- 1. SEGURIDAD Y USUARIOS
+-- ============================================================
+
+CREATE TABLE TRoles (
+    id_rol INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- TPersonas ELIMINADA - sus campos se fusionaron en TEmpleados y TClientes
+
+CREATE TABLE TEmpleados (
+    id_empleado INT PRIMARY KEY AUTO_INCREMENT,
+    -- Datos de persona (antes en TPersonas)
+    ci VARCHAR(255),
+    primer_nombre VARCHAR(255),
+    segundo_nombre VARCHAR(255),
+    apellido_paterno VARCHAR(255),
+    apellido_materno VARCHAR(255),
+    fecha_nacimiento DATE,
+    telefono VARCHAR(255),
+    -- Datos de empleado
+    fecha_ingreso DATE,
+    sueldo_base DECIMAL DEFAULT 0,
+    cargo VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE TUsuarios (
+    id_usuario INT PRIMARY KEY AUTO_INCREMENT,
+    id_empleado INT UNIQUE,
+    username VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_empleado) REFERENCES TEmpleados(id_empleado)
+);
+
+-- Tabla pivote para roles M:N
+CREATE TABLE TUsuarioRol (
+    id_usuario INT NOT NULL,
+    id_rol INT NOT NULL,
+    PRIMARY KEY (id_usuario, id_rol),
+    FOREIGN KEY (id_usuario) REFERENCES TUsuarios(id_usuario),
+    FOREIGN KEY (id_rol) REFERENCES TRoles(id_rol)
+);
+
+-- ============================================================
+-- 2. CLIENTES Y VEHICULOS
+-- ============================================================
+
+CREATE TABLE TClientes (
+    id_cliente INT PRIMARY KEY AUTO_INCREMENT,
+    -- Datos de persona (antes en TPersonas)
+    ci VARCHAR(255),
+    primer_nombre VARCHAR(255),
+    segundo_nombre VARCHAR(255),
+    apellido_paterno VARCHAR(255),
+    apellido_materno VARCHAR(255),
+    fecha_nacimiento DATE,
+    telefono VARCHAR(255),
+    -- Datos de cliente
+    nit VARCHAR(255),
+    direccion VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE TMotocicletas (
+    id_motocicleta INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT,
+    placa VARCHAR(255),
+    marca VARCHAR(255),
+    modelo VARCHAR(255),
+    anio INT,
+    -- Campos de ficha técnica fusionados (TFichasTecnicas eliminada)
+    nro_chasis VARCHAR(255),
+    nro_motor VARCHAR(255),
+    color VARCHAR(255),
+    cilindrada VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_cliente) REFERENCES TClientes(id_cliente)
+);
+
+-- TFichasTecnicas ELIMINADA - fusionada en TMotocicletas
+
+-- ============================================================
+-- 3. TALLER Y REPARACIONES
+-- ============================================================
+
+CREATE TABLE TServicios (
+    id_servicio INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    precio_estimado DECIMAL,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE TOrdenesTrabajo (
+    id_orden INT PRIMARY KEY AUTO_INCREMENT,
+    id_motocicleta INT,
+    id_empleado INT,
+    nro_orden VARCHAR(255),
+    fecha_ingreso DATE,
+    fecha_cierre DATE,
+    estado VARCHAR(255),
+    condicion_entrada TEXT,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_motocicleta) REFERENCES TMotocicletas(id_motocicleta),
+    FOREIGN KEY (id_empleado) REFERENCES TEmpleados(id_empleado)
+);
+
+CREATE TABLE THistorialesEstado (
+    id_historial INT PRIMARY KEY AUTO_INCREMENT,
+    id_orden INT,
+    fecha_hora_cambio DATETIME,
+    estado_asignado VARCHAR(255),
+    observacion TEXT,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_orden) REFERENCES TOrdenesTrabajo(id_orden)
+);
+
+CREATE TABLE TDetallesOrdenTrabajo (
+    id_detalle_ot INT PRIMARY KEY AUTO_INCREMENT,
+    id_orden INT,
+    id_servicio INT,
+    descripcion VARCHAR(255),
+    cantidad INT,
+    precio_labor DECIMAL,
+    subtotal DECIMAL,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_orden) REFERENCES TOrdenesTrabajo(id_orden),
+    FOREIGN KEY (id_servicio) REFERENCES TServicios(id_servicio)
+);
+
+CREATE TABLE TListasVerificacion (
+    id_lista INT PRIMARY KEY AUTO_INCREMENT,
+    id_orden INT UNIQUE,
+    frenos_revisados BOOLEAN,
+    luces_revisadas BOOLEAN,
+    piezas_ajustadas BOOLEAN,
+    prueba_ruta BOOLEAN,
+    fecha_validacion DATE,
+    fecha DATETIME,
+    kilometraje INT,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_orden) REFERENCES TOrdenesTrabajo(id_orden)
+);
+
+-- ============================================================
+-- 4. INVENTARIO
+-- ============================================================
+
+CREATE TABLE TEstantes (
+    id_estante INT PRIMARY KEY AUTO_INCREMENT,
+    numero_estante INT,
+    pasillo VARCHAR(255),
+    descripcion VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE TSecciones (
+    id_seccion INT PRIMARY KEY AUTO_INCREMENT,
+    id_estante INT,
+    codigo_seccion VARCHAR(255),
+    descripcion VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_estante) REFERENCES TEstantes(id_estante)
+);
+
+CREATE TABLE TUbicaciones (
+    id_ubicacion INT PRIMARY KEY AUTO_INCREMENT,
+    id_seccion INT,
+    nivel VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_seccion) REFERENCES TSecciones(id_seccion)
+);
+
+CREATE TABLE TProductos (
+    id_producto INT PRIMARY KEY AUTO_INCREMENT,
+    id_ubicacion INT,
+    nombre VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    precio_venta DECIMAL,
+    stock_fisico INT,
+    stock_disponible INT,
+    stock_minimo INT,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_ubicacion) REFERENCES TUbicaciones(id_ubicacion)
+);
+
+CREATE TABLE TModelosCompatibles (
+    id_modelo INT PRIMARY KEY AUTO_INCREMENT,
+    marca_moto VARCHAR(255),
+    modelo_moto VARCHAR(255),
+    anio_inicio INT,
+    anio_fin INT,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE TProductosModelosCompatibles (
+    id_producto INT,
+    id_modelo INT,
+    PRIMARY KEY (id_producto, id_modelo),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_producto) REFERENCES TProductos(id_producto),
+    FOREIGN KEY (id_modelo) REFERENCES TModelosCompatibles(id_modelo)
+);
+
+-- ============================================================
+-- 5. COMPRAS Y PROVEEDORES
+-- ============================================================
+
+CREATE TABLE TProveedores (
+    id_proveedor INT PRIMARY KEY AUTO_INCREMENT,
+    nombre VARCHAR(255),
+    telefono VARCHAR(255),
+    direccion VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE TCompras (
+    id_compra INT PRIMARY KEY AUTO_INCREMENT,
+    id_proveedor INT,
+    fecha DATE,
+    nro_factura_proveedor VARCHAR(255),
+    total_compra DECIMAL,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_proveedor) REFERENCES TProveedores(id_proveedor)
+);
+
+CREATE TABLE TDetallesCompra (
+    id_detalle_compra INT PRIMARY KEY AUTO_INCREMENT,
+    id_compra INT,
+    id_producto INT,
+    cantidad INT,
+    precio_unitario_compra DECIMAL,
+    subtotal DECIMAL,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_compra) REFERENCES TCompras(id_compra),
+    FOREIGN KEY (id_producto) REFERENCES TProductos(id_producto)
+);
+
+-- ============================================================
+-- 6. VENTAS Y CAJA
+-- ============================================================
+
+CREATE TABLE TCajas (
+    id_caja INT PRIMARY KEY AUTO_INCREMENT,
+    id_empleado INT,
+    fecha_apertura DATETIME,
+    fecha_cierre DATETIME,
+    monto_apertura DECIMAL,
+    monto_cierre_fisico DECIMAL,
+    monto_sistema DECIMAL,
+    observacion TEXT,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_empleado) REFERENCES TEmpleados(id_empleado)
+);
+
+CREATE TABLE TVentas (
+    id_venta INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT,
+    id_empleado INT,
+    id_caja INT,
+    nro_factura VARCHAR(255),
+    fecha_hora DATETIME,
+    subtotal DECIMAL,
+    descuento DECIMAL,
+    total DECIMAL,
+    metodo_pago VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_cliente) REFERENCES TClientes(id_cliente),
+    FOREIGN KEY (id_empleado) REFERENCES TEmpleados(id_empleado),
+    FOREIGN KEY (id_caja) REFERENCES TCajas(id_caja)
+);
+
+CREATE TABLE TDetallesVenta (
+    id_detalle_venta INT PRIMARY KEY AUTO_INCREMENT,
+    id_venta INT,
+    id_producto INT,
+    cantidad INT,
+    precio_unitario_historico DECIMAL,
+    subtotal DECIMAL,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_venta) REFERENCES TVentas(id_venta),
+    FOREIGN KEY (id_producto) REFERENCES TProductos(id_producto)
+);
+
+-- ============================================================
+-- 7. RESERVAS Y PEDIDOS
+-- ============================================================
+
+CREATE TABLE TReservas (
+    id_reserva INT PRIMARY KEY AUTO_INCREMENT,
+    id_cliente INT,
+    fecha_solicitud DATE,
+    fecha_expiracion DATE,
+    estado VARCHAR(255),
+    departamento_origen VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_cliente) REFERENCES TClientes(id_cliente)
+);
+
+CREATE TABLE TDetallesReservas (
+    id_detalle_reserva INT PRIMARY KEY AUTO_INCREMENT,
+    id_reserva INT,
+    id_producto INT,
+    cantidad_reservada INT,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_reserva) REFERENCES TReservas(id_reserva),
+    FOREIGN KEY (id_producto) REFERENCES TProductos(id_producto)
+);
+
+CREATE TABLE TEnvios (
+    id_envio INT PRIMARY KEY AUTO_INCREMENT,
+    id_reserva INT UNIQUE,
+    empresa_transporte VARCHAR(255),
+    nro_guia VARCHAR(255),
+    fecha_despacho DATE,
+    estado_envio VARCHAR(255),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_reserva) REFERENCES TReservas(id_reserva)
+);
+
+CREATE TABLE TReservasVentas (
+    id_reserva INT,
+    id_venta INT,
+    PRIMARY KEY (id_reserva, id_venta),
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_reserva) REFERENCES TReservas(id_reserva),
+    FOREIGN KEY (id_venta) REFERENCES TVentas(id_venta)
+);
+
+-- ============================================================
+-- 8. RRHH (PLANILLAS Y TURNOS)
+-- ============================================================
+
+CREATE TABLE TTurnos (
+    id_turno INT PRIMARY KEY AUTO_INCREMENT,
+    id_empleado INT,
+    fecha DATE,
+    hora_entrada TIME,
+    hora_salida TIME,
+    observacion TEXT,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_empleado) REFERENCES TEmpleados(id_empleado)
+);
+
+CREATE TABLE TPlanillas (
+    id_planilla INT PRIMARY KEY AUTO_INCREMENT,
+    id_empleado INT,
+    mes INT,
+    anio INT,
+    sueldo_bruto DECIMAL,
+    bonos DECIMAL,
+    deducciones DECIMAL,
+    sueldo_neto DECIMAL,
+
+    estadoA BOOLEAN DEFAULT TRUE,
+    usuarioA INT,
+    fechahoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_empleado) REFERENCES TEmpleados(id_empleado)
+);
+
+-- ============================================================
+-- 9. AUDITORIA
+-- ============================================================
+
+CREATE TABLE TAuditoriaGeneral (
+    idAuditoria INT PRIMARY KEY AUTO_INCREMENT,
+    TablaNombre VARCHAR(100) NOT NULL,
+    RegistroId INT NOT NULL,
+    Accion CHAR(1) NOT NULL COMMENT 'I=Insert, U=Update, D=Delete',
+    Campo VARCHAR(100),
+    ValorAnterior TEXT,
+    ValorNuevo TEXT,
+    usuarioA INT NOT NULL,
+    fechaHoraA DATETIME DEFAULT CURRENT_TIMESTAMP,
+    direccionIP VARCHAR(45),
+    Detalles TEXT,
+
+    FOREIGN KEY (usuarioA) REFERENCES TUsuarios(id_usuario)
+);
