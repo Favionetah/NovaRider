@@ -1,34 +1,27 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-import { useProveedoresStore } from '@/stores/proveedores'
+import { useReservasStore } from '@/stores/reservas'
 
 const props = defineProps({
-  proveedor: { type: Object, default: null },
+  reserva: { type: Object, required: true },
 })
 
 const emit = defineEmits(['cerrar'])
 
-const store = useProveedoresStore()
+const store = useReservasStore()
 
-const esEdicion = !!props.proveedor
-
-const form = ref({
-  nombre: '',
-  telefono: '',
-  direccion: '',
-})
-
-const errores = ref({})
 const guardando = ref(false)
 const errorGeneral = ref('')
+const errores = ref({})
+
+const form = ref({
+  empresa_transporte: '',
+  nro_guia: '',
+  fecha_despacho: new Date().toISOString().split('T')[0],
+  estado_envio: 'en_transito',
+})
 
 onMounted(async () => {
-  if (esEdicion) {
-    form.value.nombre = props.proveedor.nombre || ''
-    form.value.telefono = props.proveedor.telefono || ''
-    form.value.direccion = props.proveedor.direccion || ''
-  }
-
   await nextTick()
   gsap.fromTo('.modal-card', { y: 30, opacity: 0, scale: 0.97 }, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: 'power3.out' })
 })
@@ -43,18 +36,14 @@ async function guardar() {
   errorGeneral.value = ''
 
   try {
-    if (esEdicion) {
-      await store.actualizar(props.proveedor.id_proveedor, form.value)
-    } else {
-      await store.crear(form.value)
-    }
-    emit('guardado')
+    await store.registrarEnvio(props.reserva.id_reserva, form.value)
+    cerrar()
   } catch (err) {
     const data = err.response?.data
     if (data?.errors) {
       errores.value = data.errors
     } else {
-      errorGeneral.value = data?.message || 'Error al guardar proveedor'
+      errorGeneral.value = data?.message || 'Error al registrar envio'
     }
   } finally {
     guardando.value = false
@@ -64,53 +53,66 @@ async function guardar() {
 
 <template>
   <div class="modal-overlay" @click.self="cerrar">
-    <div class="modal-card">
+    <div class="modal-card modal-sm">
       <div class="modal-header">
-        <h2>{{ esEdicion ? 'Editar Proveedor' : 'Nuevo Proveedor' }}</h2>
+        <h2>Registrar Envío</h2>
         <button class="btn-cerrar" @click="cerrar">&times;</button>
       </div>
 
       <p v-if="errorGeneral" class="mensaje-error">{{ errorGeneral }}</p>
 
       <form @submit.prevent="guardar" class="modal-body">
-        <div class="form-grid">
-          <div class="form-group form-group-full">
-            <label for="nombre">Nombre <span class="required">*</span></label>
-            <input
-              id="nombre"
-              v-model="form.nombre"
-              type="text"
-              placeholder="Nombre del proveedor"
-              :class="{ 'input-error': errores.nombre }"
-            />
-            <span v-if="errores.nombre" class="error-text">{{ errores.nombre[0] }}</span>
-          </div>
+        <p class="envio-info">
+          Reserva #{{ reserva.id_reserva }} — {{ reserva.cliente?.nombre_completo }}
+        </p>
 
-          <div class="form-group">
-            <label for="telefono">Tel&eacute;fono</label>
-            <input
-              id="telefono"
-              v-model="form.telefono"
-              type="text"
-              placeholder="N&uacute;mero de tel&eacute;fono"
-            />
-          </div>
+        <div class="form-group">
+          <label for="empresa">Empresa transporte <span class="required">*</span></label>
+          <input
+            id="empresa"
+            v-model="form.empresa_transporte"
+            type="text"
+            placeholder="Ej: Boliviana de Envíos"
+            :class="{ 'input-error': errores.empresa_transporte }"
+          />
+          <span v-if="errores.empresa_transporte" class="error-text">{{ errores.empresa_transporte[0] }}</span>
+        </div>
 
-          <div class="form-group">
-            <label for="direccion">Direcci&oacute;n</label>
-            <input
-              id="direccion"
-              v-model="form.direccion"
-              type="text"
-              placeholder="Direcci&oacute;n"
-            />
-          </div>
+        <div class="form-group">
+          <label for="guia">Nro. Guía <span class="required">*</span></label>
+          <input
+            id="guia"
+            v-model="form.nro_guia"
+            type="text"
+            placeholder="Número de guía"
+            :class="{ 'input-error': errores.nro_guia }"
+          />
+          <span v-if="errores.nro_guia" class="error-text">{{ errores.nro_guia[0] }}</span>
+        </div>
+
+        <div class="form-group">
+          <label for="fecha">Fecha despacho <span class="required">*</span></label>
+          <input
+            id="fecha"
+            v-model="form.fecha_despacho"
+            type="date"
+            :class="{ 'input-error': errores.fecha_despacho }"
+          />
+          <span v-if="errores.fecha_despacho" class="error-text">{{ errores.fecha_despacho[0] }}</span>
+        </div>
+
+        <div class="form-group">
+          <label for="est_envio">Estado envío</label>
+          <select id="est_envio" v-model="form.estado_envio">
+            <option value="en_transito">En tránsito</option>
+            <option value="entregado">Entregado</option>
+          </select>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn-cancelar" @click="cerrar">Cancelar</button>
           <button type="submit" class="btn-guardar" :disabled="guardando">
-            {{ guardando ? 'Guardando...' : 'Guardar' }}
+            {{ guardando ? 'Guardando...' : 'Registrar Envío' }}
           </button>
         </div>
       </form>
@@ -133,10 +135,14 @@ async function guardar() {
 .modal-card {
   background: #FFFFFF;
   border-radius: 14px;
-  max-width: 500px;
+  max-width: 720px;
   width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
 }
+
+.modal-sm { max-width: 440px; }
 
 .modal-header {
   display: flex;
@@ -146,11 +152,7 @@ async function guardar() {
   border-bottom: 1px solid #E5E7EB;
 }
 
-.modal-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #042D29;
-}
+.modal-header h2 { font-size: 18px; font-weight: 600; color: #042D29; }
 
 .btn-cerrar {
   background: none;
@@ -173,24 +175,22 @@ async function guardar() {
   border-radius: 8px;
 }
 
-.modal-body {
-  padding: 24px;
-}
+.modal-body { padding: 24px; }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+.envio-info {
+  font-size: 14px;
+  color: #1F2937;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #F9FAFB;
+  border-radius: 8px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.form-group-full {
-  grid-column: 1 / -1;
+  margin-bottom: 16px;
 }
 
 .form-group label {
@@ -201,7 +201,8 @@ async function guardar() {
 
 .required { color: #741102; }
 
-.form-group input {
+.form-group input,
+.form-group select {
   padding: 10px 12px;
   border: 1.5px solid #D1D5DB;
   border-radius: 10px;
@@ -212,14 +213,14 @@ async function guardar() {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   border-color: #042D29;
   box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
 }
 
-.form-group input.input-error {
-  border-color: #741102;
-}
+.form-group input.input-error,
+.form-group select.input-error { border-color: #741102; }
 
 .error-text {
   font-size: 12px;
@@ -230,9 +231,7 @@ async function guardar() {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid #E5E7EB;
+  padding-top: 8px;
 }
 
 .btn-cancelar {
@@ -248,10 +247,7 @@ async function guardar() {
   transition: all 0.2s ease;
 }
 
-.btn-cancelar:hover {
-  border-color: #929079;
-  color: #1F2937;
-}
+.btn-cancelar:hover { border-color: #929079; color: #1F2937; }
 
 .btn-guardar {
   padding: 10px 24px;

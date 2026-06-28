@@ -8,6 +8,7 @@ use App\Http\Controllers\PlanillaController;
 use App\Http\Controllers\ProgramacionController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\UsuarioController;
 use App\Models\Producto;
@@ -34,6 +35,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/usuarios/{id}', [UsuarioController::class, 'update']);
         Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy']);
         Route::put('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar']);
+        Route::get('/usuarios/reporte/pdf', [UsuarioController::class, 'reportePdf']);
 
         Route::get('/proveedores', [ProveedorController::class, 'index']);
         Route::post('/proveedores', [ProveedorController::class, 'store']);
@@ -44,6 +46,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/compras', [CompraController::class, 'index']);
         Route::post('/compras', [CompraController::class, 'store']);
         Route::get('/compras/{id}', [CompraController::class, 'show']);
+        Route::get('/compras/reporte/pdf', [CompraController::class, 'reportePdf']);
 
         Route::get('/turnos', [TurnoController::class, 'index']);
         Route::post('/turnos', [TurnoController::class, 'store']);
@@ -65,7 +68,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/productos', function () {
             $productos = Producto::where('estadoA', true)
                 ->orderBy('nombre')
-                ->get(['id_producto', 'nombre', 'stock_disponible']);
+                ->get(['id_producto', 'nombre', 'precio_venta', 'costo', 'stock_disponible', 'stock_fisico']);
             return response()->json(['productos' => $productos]);
         });
     });
@@ -77,6 +80,21 @@ Route::middleware('auth')->group(function () {
         Route::put('/clientes/{id}', [ClienteController::class, 'update']);
         Route::delete('/clientes/{id}', [ClienteController::class, 'destroy']);
         Route::put('/clientes/{id}/reactivar', [ClienteController::class, 'reactivar']);
+
+        Route::get('/clientes-lista', function () {
+            $clientes = \App\Models\Cliente::where('estadoA', true)
+                ->orderBy('primer_nombre')
+                ->get(['id_cliente', 'primer_nombre', 'segundo_nombre', 'apellido_paterno', 'apellido_materno', 'ci', 'telefono']);
+            return response()->json(['clientes' => $clientes]);
+        });
+
+        Route::get('/reservas', [ReservaController::class, 'index']);
+        Route::post('/reservas', [ReservaController::class, 'store']);
+        Route::get('/reservas/{id}', [ReservaController::class, 'show']);
+        Route::put('/reservas/{id}', [ReservaController::class, 'update']);
+        Route::delete('/reservas/{id}', [ReservaController::class, 'destroy']);
+        Route::post('/reservas/{id}/convertir-venta', [ReservaController::class, 'convertirVenta']);
+        Route::post('/reservas/{id}/registrar-envio', [ReservaController::class, 'registrarEnvio']);
     });
 
     Route::middleware('role:1,3')->group(function () {

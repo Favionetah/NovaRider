@@ -1,54 +1,54 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { useComprasStore } from '@/stores/compras'
+import { useReservasStore } from '@/stores/reservas'
 import api from '@/services/api'
 
 const emit = defineEmits(['cerrar'])
 
-const comprasStore = useComprasStore()
+const store = useReservasStore()
 
-const proveedores = ref([])
+const clientes = ref([])
 const productos = ref([])
 const guardando = ref(false)
 const errorGeneral = ref('')
 const errores = ref({})
 
 const form = ref({
-  id_proveedor: '',
-  fecha: new Date().toISOString().split('T')[0],
-  nro_factura_proveedor: '',
+  id_cliente: '',
+  monto_adelanto: 0,
+  adelanto_metodo_pago: '',
+  fecha_expiracion: '',
+  departamento_origen: '',
   detalles: [],
 })
 
 function agregarFila() {
-  form.value.detalles.push({ id_producto: '', cantidad: 1, precio_unitario_compra: 0 })
+  form.value.detalles.push({ id_producto: '', cantidad: 1 })
 }
 
 function quitarFila(index) {
   form.value.detalles.splice(index, 1)
 }
 
-function onProductoChange(det) {
-  const prod = productos.value.find(p => p.id_producto === det.id_producto)
-  if (prod) {
-    det.precio_unitario_compra = prod.costo || 0
-  }
-}
-
-const total = computed(() => {
+const totalEstimado = computed(() => {
   return form.value.detalles.reduce((sum, d) => {
-    return sum + (Number(d.cantidad) || 0) * (Number(d.precio_unitario_compra) || 0)
+    const prod = productos.value.find(p => p.id_producto === d.id_producto)
+    return sum + (d.cantidad || 0) * (prod?.precio_venta || 0)
   }, 0)
 })
 
 onMounted(async () => {
   try {
-    const [provRes, prodRes] = await Promise.all([
-      api.get('/proveedores'),
+    const [cliRes, prodRes] = await Promise.all([
+      api.get('/clientes-lista'),
       api.get('/productos'),
     ])
-    proveedores.value = provRes.data.proveedores
-    productos.value = prodRes.data.productos
+    clientes.value = cliRes.data.clientes
+    productos.value = prodRes.data.productos.map(p => ({
+      ...p,
+      precio_venta: Number(p.precio_venta) || 0,
+      stock_disponible: Number(p.stock_disponible) || 0,
+    }))
   } catch {
     errorGeneral.value = 'Error al cargar datos iniciales'
   }
@@ -63,20 +63,25 @@ function cerrar() {
   emit('cerrar')
 }
 
+function nombreCliente(c) {
+  return [c.primer_nombre, c.segundo_nombre, c.apellido_paterno, c.apellido_materno]
+    .filter(Boolean).join(' ')
+}
+
 async function guardar() {
   guardando.value = true
   errores.value = {}
   errorGeneral.value = ''
 
   try {
-    await comprasStore.crear(form.value)
-    emit('guardado')
+    await store.crear(form.value)
+    cerrar()
   } catch (err) {
     const data = err.response?.data
     if (data?.errors) {
       errores.value = data.errors
     } else {
-      errorGeneral.value = data?.message || 'Error al registrar compra'
+      errorGeneral.value = data?.message || 'Error al crear reserva'
     }
   } finally {
     guardando.value = false
@@ -88,7 +93,7 @@ async function guardar() {
   <div class="modal-overlay" @click.self="cerrar">
     <div class="modal-card">
       <div class="modal-header">
-        <h2>Nueva Compra</h2>
+        <h2>Nueva Reserva</h2>
         <button class="btn-cerrar" @click="cerrar">&times;</button>
       </div>
 
@@ -97,45 +102,69 @@ async function guardar() {
       <form @submit.prevent="guardar" class="modal-body">
         <div class="form-grid">
           <div class="form-group">
-            <label for="proveedor">Proveedor <span class="required">*</span></label>
+            <label for="cliente">Cliente <span class="required">*</span></label>
             <select
-              id="proveedor"
-              v-model="form.id_proveedor"
-              :class="{ 'input-error': errores.id_proveedor }"
+              id="cliente"
+              v-model="form.id_cliente"
+              :class="{ 'input-error': errores.id_cliente }"
             >
-              <option value="">Seleccionar proveedor...</option>
-              <option v-for="p in proveedores" :key="p.id_proveedor" :value="p.id_proveedor">
-                {{ p.nombre }}
+              <option value="">Seleccionar cliente...</option>
+              <option v-for="c in clientes" :key="c.id_cliente" :value="c.id_cliente">
+                {{ nombreCliente(c) }} {{ c.ci ? `(${c.ci})` : '' }}
               </option>
             </select>
-            <span v-if="errores.id_proveedor" class="error-text">{{ errores.id_proveedor[0] }}</span>
+            <span v-if="errores.id_cliente" class="error-text">{{ errores.id_cliente[0] }}</span>
           </div>
 
           <div class="form-group">
-            <label for="fecha">Fecha <span class="required">*</span></label>
+            <label for="fecha_exp">Fecha expiración</label>
             <input
-              id="fecha"
-              v-model="form.fecha"
+              id="fecha_exp"
+              v-model="form.fecha_expiracion"
               type="date"
-              :class="{ 'input-error': errores.fecha }"
             />
-            <span v-if="errores.fecha" class="error-text">{{ errores.fecha[0] }}</span>
           </div>
 
-          <div class="form-group form-group-full">
-            <label for="factura">Nro. Factura Proveedor</label>
+          <div class="form-group">
+            <label for="dep_origen">Departamento origen</label>
             <input
-              id="factura"
-              v-model="form.nro_factura_proveedor"
+              id="dep_origen"
+              v-model="form.departamento_origen"
               type="text"
-              placeholder="N&uacute;mero de factura"
+              placeholder="Ej: Santa Cruz"
             />
+          </div>
+
+          <div class="form-group">
+            <label for="monto_adelanto">Monto adelanto</label>
+            <input
+              id="monto_adelanto"
+              v-model.number="form.monto_adelanto"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0"
+            />
+          </div>
+
+          <div v-if="form.monto_adelanto > 0" class="form-group">
+            <label for="met_pago">Método pago adelanto <span class="required">*</span></label>
+            <select
+              id="met_pago"
+              v-model="form.adelanto_metodo_pago"
+              :class="{ 'input-error': errores.adelanto_metodo_pago }"
+            >
+              <option value="">Seleccionar...</option>
+              <option value="QR">QR</option>
+              <option value="Efectivo">Efectivo</option>
+            </select>
+            <span v-if="errores.adelanto_metodo_pago" class="error-text">{{ errores.adelanto_metodo_pago[0] }}</span>
           </div>
         </div>
 
         <div class="detalles-section">
           <div class="detalles-header">
-            <h3>Productos</h3>
+            <h3>Productos a reservar</h3>
             <button type="button" class="btn-agregar" @click="agregarFila">
               + Agregar producto
             </button>
@@ -150,11 +179,15 @@ async function guardar() {
                 <select
                   v-model="det.id_producto"
                   :class="{ 'input-error': errores[`detalles.${i}.id_producto`] }"
-                  @change="onProductoChange(det)"
                 >
                   <option value="">Seleccionar...</option>
-                  <option v-for="p in productos" :key="p.id_producto" :value="p.id_producto">
-                    {{ p.nombre }} (costo: ${{ Number(p.costo).toFixed(2) }})
+                  <option
+                    v-for="p in productos"
+                    :key="p.id_producto"
+                    :value="p.id_producto"
+                    :disabled="p.stock_disponible < 1"
+                  >
+                    {{ p.nombre }} (stock: {{ p.stock_disponible }})
                   </option>
                 </select>
               </div>
@@ -164,39 +197,30 @@ async function guardar() {
                   v-model.number="det.cantidad"
                   type="number"
                   min="1"
+                  :max="productos.find(p => p.id_producto === det.id_producto)?.stock_disponible || 1"
                   :class="{ 'input-error': errores[`detalles.${i}.cantidad`] }"
                 />
               </div>
-              <div class="detalle-campo detalle-precio">
-                <label>Precio Unit. <span class="required">*</span></label>
-                <input
-                  v-model.number="det.precio_unitario_compra"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  :class="{ 'input-error': errores[`detalles.${i}.precio_unitario_compra`] }"
-                />
+              <div class="detalle-campo detalle-precio-info">
+                <label>Precio U.</label>
+                <span class="precio-info">
+                  ${{ (productos.find(p => p.id_producto === det.id_producto)?.precio_venta || 0).toFixed(2) }}
+                </span>
               </div>
-              <div class="detalle-campo detalle-subtotal">
-                <label>Subtotal</label>
-                <span class="subtotal-valor">${{ ((det.cantidad || 0) * (det.precio_unitario_compra || 0)).toFixed(2) }}</span>
-              </div>
-              <button type="button" class="btn-quitar" @click="quitarFila(i)" title="Quitar">
-                &times;
-              </button>
+              <button type="button" class="btn-quitar" @click="quitarFila(i)" title="Quitar">&times;</button>
             </div>
           </div>
 
           <div class="total-section">
-            <span class="total-label">Total:</span>
-            <span class="total-valor">${{ total.toFixed(2) }}</span>
+            <span class="total-label">Total estimado:</span>
+            <span class="total-valor">${{ totalEstimado.toFixed(2) }}</span>
           </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn-cancelar" @click="cerrar">Cancelar</button>
           <button type="submit" class="btn-guardar" :disabled="guardando">
-            {{ guardando ? 'Guardando...' : 'Registrar Compra' }}
+            {{ guardando ? 'Guardando...' : 'Crear Reserva' }}
           </button>
         </div>
       </form>
@@ -234,11 +258,7 @@ async function guardar() {
   border-bottom: 1px solid #E5E7EB;
 }
 
-.modal-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #042D29;
-}
+.modal-header h2 { font-size: 18px; font-weight: 600; color: #042D29; }
 
 .btn-cerrar {
   background: none;
@@ -261,9 +281,7 @@ async function guardar() {
   border-radius: 8px;
 }
 
-.modal-body {
-  padding: 24px;
-}
+.modal-body { padding: 24px; }
 
 .form-grid {
   display: grid;
@@ -275,10 +293,6 @@ async function guardar() {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.form-group-full {
-  grid-column: 1 / -1;
 }
 
 .form-group label {
@@ -308,9 +322,7 @@ async function guardar() {
 }
 
 .form-group input.input-error,
-.form-group select.input-error {
-  border-color: #741102;
-}
+.form-group select.input-error { border-color: #741102; }
 
 .error-text {
   font-size: 12px;
@@ -349,9 +361,7 @@ async function guardar() {
   transition: all 0.2s ease;
 }
 
-.btn-agregar:hover {
-  background: rgba(4, 45, 41, 0.15);
-}
+.btn-agregar:hover { background: rgba(4, 45, 41, 0.15); }
 
 .detalle-filas {
   display: flex;
@@ -394,20 +404,15 @@ async function guardar() {
 }
 
 .detalle-campo select:focus,
-.detalle-campo input:focus {
-  border-color: #042D29;
-}
+.detalle-campo input:focus { border-color: #042D29; }
 
 .detalle-campo input.input-error,
-.detalle-campo select.input-error {
-  border-color: #741102;
-}
+.detalle-campo select.input-error { border-color: #741102; }
 
 .detalle-cant { max-width: 90px; }
-.detalle-precio { max-width: 120px; }
-.detalle-subtotal { max-width: 110px; }
+.detalle-precio-info { max-width: 110px; }
 
-.subtotal-valor {
+.precio-info {
   display: flex;
   align-items: center;
   height: 100%;
@@ -432,10 +437,7 @@ async function guardar() {
   transition: all 0.2s ease;
 }
 
-.btn-quitar:hover {
-  border-color: #741102;
-  color: #741102;
-}
+.btn-quitar:hover { border-color: #741102; color: #741102; }
 
 .total-section {
   display: flex;
@@ -481,10 +483,7 @@ async function guardar() {
   transition: all 0.2s ease;
 }
 
-.btn-cancelar:hover {
-  border-color: #929079;
-  color: #1F2937;
-}
+.btn-cancelar:hover { border-color: #929079; color: #1F2937; }
 
 .btn-guardar {
   padding: 10px 24px;

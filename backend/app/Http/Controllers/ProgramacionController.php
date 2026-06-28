@@ -139,6 +139,7 @@ class ProgramacionController extends Controller
                     $emp->primer_nombre, $emp->segundo_nombre,
                     $emp->apellido_paterno, $emp->apellido_materno,
                 ]))),
+                'ci' => $emp->ci,
                 'cargo' => $emp->cargo,
             ] : null,
             'dia_semana' => $p->dia_semana,

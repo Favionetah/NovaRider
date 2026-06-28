@@ -6,6 +6,7 @@ use App\Models\Empleado;
 use App\Models\Rol;
 use App\Models\User;
 use App\Traits\AuditoriaTrait;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -305,6 +306,74 @@ class UsuarioController extends Controller
         $roles = Rol::activos()->orderBy('nombre')->get(['id_rol', 'nombre', 'descripcion']);
 
         return response()->json(['roles' => $roles]);
+    }
+
+    public function reportePdf(Request $request)
+    {
+        $busqueda = $request->input('busqueda', '');
+        $rol = $request->input('rol', '');
+        $inactivos = $request->boolean('inactivos');
+
+        $query = User::with('empleado', 'roles')->orderBy('id_usuario');
+
+        if ($inactivos) {
+            $query->where('estadoA', false);
+        } else {
+            $query->where('estadoA', true);
+        }
+
+        if ($rol) {
+            $query->whereHas('roles', function ($q) use ($rol) {
+                $q->where('TRoles.id_rol', $rol);
+            });
+        }
+
+        if ($busqueda) {
+            $q = strtolower($busqueda);
+            $query->where(function ($query) use ($q) {
+                $query->whereHas('empleado', function ($sub) use ($q) {
+                    $sub->whereRaw("LOWER(CONCAT(primer_nombre, ' ', IFNULL(segundo_nombre,''), ' ', apellido_paterno, ' ', IFNULL(apellido_materno,''))) LIKE ?", ["%{$q}%"])
+                        ->orWhereRaw("LOWER(ci) LIKE ?", ["%{$q}%"]);
+                })->orWhereRaw("LOWER(username) LIKE ?", ["%{$q}%"]);
+            });
+        }
+
+        $usuarios = $query->get()->map(function ($user) {
+            return $this->formatearUsuario($user);
+        });
+
+        $rolNombre = '';
+        if ($rol) {
+            $rolObj = Rol::find($rol);
+            $rolNombre = $rolObj ? $rolObj->nombre : '';
+        }
+
+        $filtros = [
+            'busqueda' => $busqueda,
+            'rol' => $rolNombre,
+            'estado' => $inactivos ? 'Inactivos' : 'Activos',
+        ];
+
+        $logoPath = public_path('img/Logo3_NovaRider.png');
+        $logoExists = file_exists($logoPath);
+        $logoBase64 = $logoExists ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
+
+        $pdf = Pdf::loadView('reportes.usuarios_pdf', [
+            'usuarios' => $usuarios,
+            'filtros' => $filtros,
+            'fechaGeneracion' => now()->format('d/m/Y H:i'),
+            'usuarioGenera' => auth()->user()->username ?? 'Sistema',
+            'logoBase64' => $logoBase64,
+            'totalRegistros' => $usuarios->count(),
+        ]);
+
+        $filename = 'reporte_usuarios_' . now()->format('Y-m-d_His') . '.pdf';
+
+        if ($request->boolean('preview')) {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
     }
 
     private function formatearUsuario(User $user)

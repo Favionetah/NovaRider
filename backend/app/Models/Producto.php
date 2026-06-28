@@ -15,6 +15,7 @@ class Producto extends Model
         'nombre',
         'descripcion',
         'precio_venta',
+        'costo',
         'stock_fisico',
         'stock_disponible',
         'stock_minimo',

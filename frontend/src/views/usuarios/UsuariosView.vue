@@ -2,8 +2,10 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUsuariosStore } from '@/stores/usuarios'
+import api from '@/services/api'
 import UsuarioFormModal from './UsuarioFormModal.vue'
 import ConfirmarEliminacion from './ConfirmarEliminacion.vue'
+import VistaPreviaPdfModal from './VistaPreviaPdfModal.vue'
 
 const router = useRouter()
 const store = useUsuariosStore()
@@ -11,6 +13,7 @@ const store = useUsuariosStore()
 const tabActivo = ref('activos')
 const busqueda = ref('')
 const filtroRol = ref('')
+const keyTabla = ref(0)
 const stats = ref({ total: 0, activos: 0, turnos_hoy: 0 })
 
 async function cargarStats() {
@@ -24,7 +27,7 @@ async function cargarStats() {
 }
 
 onMounted(async () => {
-  await Promise.all([store.listar(), store.listarInactivos()])
+  await Promise.all([store.listar(), store.listarInactivos(), store.obtenerRoles()])
   await cargarStats()
   await nextTick()
   animarEntrada()
@@ -41,8 +44,21 @@ function animarEntrada() {
   gsap.fromTo('.page-header', { y: -15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out' })
   gsap.fromTo('.stats-grid', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.08 })
   gsap.fromTo('.tabla-wrapper', { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.15 })
-  gsap.fromTo('.tabla-usuarios tbody tr', { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
+  animarFilas()
 }
+
+function animarFilas() {
+  gsap.fromTo('.tabla-usuarios tbody tr',
+    { y: 10, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 }
+  )
+}
+
+watch([busqueda, filtroRol], async () => {
+  keyTabla.value++
+  await nextTick()
+  animarFilas()
+})
 
 function irADetalle(id) {
   router.push(`/usuarios/${id}`)
@@ -115,6 +131,55 @@ function cancelarEliminar() {
 
 async function reactivarUsuario(id) {
   await store.reactivar(id)
+}
+
+const generandoPdf = ref(false)
+const mostrarVistaPrevia = ref(false)
+const pdfBlobUrl = ref('')
+
+function construirParamsPdf() {
+  const params = {}
+  if (busqueda.value) params.busqueda = busqueda.value
+  if (filtroRol.value) params.rol = filtroRol.value
+  if (tabActivo.value === 'inactivos') params.inactivos = '1'
+  return params
+}
+
+async function exportarPDF() {
+  generandoPdf.value = true
+  mostrarVistaPrevia.value = true
+  pdfBlobUrl.value = ''
+  try {
+    const res = await api.get('/usuarios/reporte/pdf', {
+      params: { ...construirParamsPdf(), preview: '1' },
+      responseType: 'blob'
+    })
+    if (pdfBlobUrl.value) URL.revokeObjectURL(pdfBlobUrl.value)
+    pdfBlobUrl.value = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+  } catch {
+    mostrarVistaPrevia.value = false
+    alert('Error al generar el reporte PDF')
+  } finally {
+    generandoPdf.value = false
+  }
+}
+
+function descargarPdf() {
+  if (!pdfBlobUrl.value) return
+  const link = document.createElement('a')
+  link.href = pdfBlobUrl.value
+  link.download = 'reporte_usuarios.pdf'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+function cerrarVistaPrevia() {
+  mostrarVistaPrevia.value = false
+  if (pdfBlobUrl.value) {
+    URL.revokeObjectURL(pdfBlobUrl.value)
+    pdfBlobUrl.value = ''
+  }
 }
 </script>
 
@@ -207,6 +272,12 @@ async function reactivarUsuario(id) {
             </option>
           </select>
         </div>
+        <button class="btn-exportar" @click="exportarPDF" :disabled="generandoPdf">
+          <svg viewBox="0 0 24 24" fill="none" class="icon-export">
+            <path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          {{ generandoPdf ? 'Generando...' : 'Exportar PDF' }}
+        </button>
       </div>
 
       <div class="toolbar" v-else>
@@ -222,6 +293,12 @@ async function reactivarUsuario(id) {
             placeholder="Buscar por nombre, usuario o CI..."
           />
         </div>
+        <button class="btn-exportar" @click="exportarPDF" :disabled="generandoPdf">
+          <svg viewBox="0 0 24 24" fill="none" class="icon-export">
+            <path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          {{ generandoPdf ? 'Generando...' : 'Exportar PDF' }}
+        </button>
       </div>
 
       <div v-if="store.loading" class="cargando">Cargando usuarios...</div>
@@ -238,7 +315,7 @@ async function reactivarUsuario(id) {
               <th class="col-acc">Acciones</th>
             </tr>
           </thead>
-          <tbody v-if="tabActivo === 'activos'">
+          <tbody :key="keyTabla" v-if="tabActivo === 'activos'">
             <tr v-for="u in usuariosFiltrados" :key="u.id_usuario">
               <td class="col-id">{{ u.id_usuario }}</td>
               <td class="col-emp">
@@ -322,6 +399,14 @@ async function reactivarUsuario(id) {
       :usuario="usuarioEliminar"
       @confirmar="eliminarUsuario"
       @cancelar="cancelarEliminar"
+    />
+
+    <VistaPreviaPdfModal
+      v-if="mostrarVistaPrevia"
+      :pdf-blob-url="pdfBlobUrl"
+      :cargando="generandoPdf"
+      @cerrar="cerrarVistaPrevia"
+      @descargar="descargarPdf"
     />
   </div>
 </template>
@@ -513,6 +598,44 @@ async function reactivarUsuario(id) {
 .filter-select:focus {
   border-color: #042D29;
   box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
+}
+
+.btn-exportar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #FFFFFF;
+  color: #042D29;
+  border: 1.5px solid #042D29;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-exportar:hover:not(:disabled) {
+  background: rgba(4, 45, 41, 0.06);
+  border-color: #052E2A;
+}
+
+.btn-exportar:active:not(:disabled) {
+  background: rgba(4, 45, 41, 0.1);
+  border-color: #741102;
+  color: #741102;
+}
+
+.btn-exportar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.icon-export {
+  width: 18px;
+  height: 18px;
 }
 
 /* ── Loading ── */
@@ -724,8 +847,7 @@ async function reactivarUsuario(id) {
   color: #741102;
 }
 
-.page-header, .stats-grid, .tabla-wrapper,
-.tabla-usuarios tbody tr {
+.page-header, .stats-grid, .tabla-wrapper {
   opacity: 0;
 }
 

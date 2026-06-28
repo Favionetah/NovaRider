@@ -6,6 +6,7 @@ use App\Models\Compra;
 use App\Models\DetalleCompra;
 use App\Models\Producto;
 use App\Traits\AuditoriaTrait;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -109,6 +110,77 @@ class CompraController extends Controller
             DB::rollBack();
             return response()->json(['message' => 'Error al registrar compra: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function reportePdf(Request $request)
+    {
+        $busqueda = $request->input('busqueda', '');
+        $proveedor = $request->input('proveedor', '');
+        $fechaDesde = $request->input('fecha_desde', '');
+        $fechaHasta = $request->input('fecha_hasta', '');
+
+        $query = Compra::with('proveedor', 'detalles.producto')
+            ->orderBy('fecha', 'desc')
+            ->orderBy('id_compra', 'desc');
+
+        if ($busqueda) {
+            $q = strtolower($busqueda);
+            $query->where(function ($sub) use ($q) {
+                $sub->whereHas('proveedor', function ($prov) use ($q) {
+                    $prov->whereRaw("LOWER(nombre) LIKE ?", ["%{$q}%"]);
+                })->orWhereRaw("LOWER(nro_factura_proveedor) LIKE ?", ["%{$q}%"]);
+            });
+        }
+
+        if ($proveedor) {
+            $query->where('id_proveedor', $proveedor);
+        }
+
+        if ($fechaDesde) {
+            $query->where('fecha', '>=', $fechaDesde);
+        }
+
+        if ($fechaHasta) {
+            $query->where('fecha', '<=', $fechaHasta);
+        }
+
+        $compras = $query->get()->map(fn($c) => $this->formatearCompra($c));
+
+        $totalGeneral = $compras->sum('total_compra');
+
+        $proveedorNombre = '';
+        if ($proveedor) {
+            $prov = \App\Models\Proveedor::find($proveedor);
+            $proveedorNombre = $prov ? $prov->nombre : '';
+        }
+
+        $filtros = [
+            'busqueda' => $busqueda,
+            'proveedor' => $proveedorNombre,
+            'fecha_desde' => $fechaDesde ?: '—',
+            'fecha_hasta' => $fechaHasta ?: '—',
+        ];
+
+        $logoPath = public_path('img/Logo3_NovaRider.png');
+        $logoBase64 = file_exists($logoPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
+
+        $pdf = Pdf::loadView('reportes.compras_pdf', [
+            'compras' => $compras,
+            'filtros' => $filtros,
+            'fechaGeneracion' => now()->format('d/m/Y H:i'),
+            'usuarioGenera' => auth()->user()->username ?? 'Sistema',
+            'logoBase64' => $logoBase64,
+            'totalRegistros' => $compras->count(),
+            'totalGeneral' => $totalGeneral,
+        ]);
+
+        $filename = 'reporte_compras_' . now()->format('Y-m-d_His') . '.pdf';
+
+        if ($request->boolean('preview')) {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
     }
 
     private function formatearCompra(Compra $compra)

@@ -2,8 +2,10 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useComprasStore } from '@/stores/compras'
 import { useProveedoresStore } from '@/stores/proveedores'
+import api from '@/services/api'
 import CompraFormModal from './CompraFormModal.vue'
 import ProveedorFormModal from './ProveedorFormModal.vue'
+import VistaPreviaPdfModal from '@/views/usuarios/VistaPreviaPdfModal.vue'
 
 const comprasStore = useComprasStore()
 const provStore = useProveedoresStore()
@@ -11,6 +13,11 @@ const provStore = useProveedoresStore()
 const tabActivo = ref('compras')
 const busqueda = ref('')
 const busquedaProv = ref('')
+const filtroProveedor = ref('')
+const filtroFechaDesde = ref('')
+const filtroFechaHasta = ref('')
+const incluirInactivos = ref(false)
+const keyTabla = ref(0)
 const mostrarFormCompra = ref(false)
 const mostrarFormProveedor = ref(false)
 const proveedorEditando = ref(null)
@@ -24,8 +31,21 @@ onMounted(async () => {
 watch(tabActivo, async () => {
   busqueda.value = ''
   busquedaProv.value = ''
+  filtroProveedor.value = ''
+  filtroFechaDesde.value = ''
+  filtroFechaHasta.value = ''
+  incluirInactivos.value = false
   await nextTick()
   animarEntrada()
+})
+
+watch([busqueda, filtroProveedor, filtroFechaDesde, filtroFechaHasta], () => {
+  keyTabla.value++
+  nextTick(() => animarFilas())
+})
+
+watch([busquedaProv, incluirInactivos], () => {
+  nextTick(() => animarFilas())
 })
 
 function animarEntrada() {
@@ -33,6 +53,81 @@ function animarEntrada() {
   gsap.fromTo('.toolbar', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', delay: 0.1 })
   gsap.fromTo('.tabla-wrapper', { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.15 })
   gsap.fromTo('.tabla-contenido tbody tr', { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
+}
+
+function animarFilas() {
+  gsap.fromTo(
+    '.tabla-contenido tbody tr',
+    { y: 10, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out' }
+  )
+}
+
+const tieneFiltrosCompras = computed(() => {
+  return busqueda.value || filtroProveedor.value || filtroFechaDesde.value || filtroFechaHasta.value
+})
+
+const tieneFiltrosProveedores = computed(() => {
+  return busquedaProv.value || incluirInactivos.value
+})
+
+function limpiarFiltros() {
+  busqueda.value = ''
+  busquedaProv.value = ''
+  filtroProveedor.value = ''
+  filtroFechaDesde.value = ''
+  filtroFechaHasta.value = ''
+  incluirInactivos.value = false
+}
+
+const generandoPdf = ref(false)
+const mostrarVistaPrevia = ref(false)
+const pdfBlobUrl = ref('')
+
+function construirParamsPdf() {
+  const params = {}
+  if (busqueda.value) params.busqueda = busqueda.value
+  if (filtroProveedor.value) params.proveedor = filtroProveedor.value
+  if (filtroFechaDesde.value) params.fecha_desde = filtroFechaDesde.value
+  if (filtroFechaHasta.value) params.fecha_hasta = filtroFechaHasta.value
+  return params
+}
+
+async function exportarPDF() {
+  generandoPdf.value = true
+  mostrarVistaPrevia.value = true
+  pdfBlobUrl.value = ''
+  try {
+    const res = await api.get('/compras/reporte/pdf', {
+      params: { ...construirParamsPdf(), preview: '1' },
+      responseType: 'blob'
+    })
+    if (pdfBlobUrl.value) URL.revokeObjectURL(pdfBlobUrl.value)
+    pdfBlobUrl.value = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }))
+  } catch {
+    mostrarVistaPrevia.value = false
+    alert('Error al generar el reporte PDF')
+  } finally {
+    generandoPdf.value = false
+  }
+}
+
+function descargarPdf() {
+  if (!pdfBlobUrl.value) return
+  const link = document.createElement('a')
+  link.href = pdfBlobUrl.value
+  link.download = 'reporte_compras.pdf'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+function cerrarVistaPrevia() {
+  mostrarVistaPrevia.value = false
+  if (pdfBlobUrl.value) {
+    URL.revokeObjectURL(pdfBlobUrl.value)
+    pdfBlobUrl.value = ''
+  }
 }
 
 const comprasFiltradas = computed(() => {
@@ -44,16 +139,42 @@ const comprasFiltradas = computed(() => {
       c.nro_factura_proveedor?.toLowerCase().includes(q)
     )
   }
+  if (filtroProveedor.value) {
+    lista = lista.filter(c => {
+      const id = c.id_proveedor || c.proveedor?.id_proveedor
+      return id == filtroProveedor.value
+    })
+  }
+  if (filtroFechaDesde.value) {
+    lista = lista.filter(c => c.fecha >= filtroFechaDesde.value)
+  }
+  if (filtroFechaHasta.value) {
+    lista = lista.filter(c => c.fecha <= filtroFechaHasta.value)
+  }
   return lista
 })
 
+const proveedoresUnicos = computed(() => {
+  const vistos = []
+  comprasStore.items.forEach(c => {
+    const id = c.id_proveedor || c.proveedor?.id_proveedor
+    if (id && !vistos.some(v => v.id_proveedor === id)) {
+      vistos.push(c.proveedor || { id_proveedor: id, nombre: '—' })
+    }
+  })
+  return vistos
+})
+
 const proveedoresFiltrados = computed(() => {
-  let lista = provStore.items
+  let lista = incluirInactivos.value
+    ? [...provStore.items, ...provStore.itemsInactivos]
+    : provStore.items
   if (busquedaProv.value) {
     const q = busquedaProv.value.toLowerCase()
     lista = lista.filter(p =>
       p.nombre?.toLowerCase().includes(q) ||
-      p.telefono?.toLowerCase().includes(q)
+      p.telefono?.toLowerCase().includes(q) ||
+      p.direccion?.toLowerCase().includes(q)
     )
   }
   return lista
@@ -72,9 +193,24 @@ function cerrarCompra() {
   mostrarFormCompra.value = false
 }
 
+async function onCompraGuardada() {
+  mostrarFormCompra.value = false
+  await comprasStore.listar()
+  await nextTick()
+  animarFilas()
+}
+
 function cerrarProveedor() {
   mostrarFormProveedor.value = false
   proveedorEditando.value = null
+}
+
+async function onProveedorGuardado() {
+  mostrarFormProveedor.value = false
+  proveedorEditando.value = null
+  await provStore.listar()
+  await nextTick()
+  animarFilas()
 }
 
 async function eliminarProveedor(id) {
@@ -140,6 +276,21 @@ async function eliminarProveedor(id) {
             placeholder="Buscar por proveedor o factura..."
           />
         </div>
+        <select v-model="filtroProveedor" class="filtro-select">
+          <option value="">Todos los proveedores</option>
+          <option v-for="p in proveedoresUnicos" :key="p.id_proveedor" :value="p.id_proveedor">
+            {{ p.nombre }}
+          </option>
+        </select>
+        <input v-model="filtroFechaDesde" type="date" class="filtro-input" placeholder="Desde" title="Fecha desde" />
+        <input v-model="filtroFechaHasta" type="date" class="filtro-input" placeholder="Hasta" title="Fecha hasta" />
+        <button v-if="tieneFiltrosCompras" class="btn-limpiar" @click="limpiarFiltros">Limpiar filtros</button>
+        <button class="btn-exportar" @click="exportarPDF" :disabled="generandoPdf">
+          <svg viewBox="0 0 24 24" fill="none" class="icon-export">
+            <path d="M12 3v12M12 15l-4-4M12 15l4-4M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          {{ generandoPdf ? 'Generando...' : 'Exportar PDF' }}
+        </button>
       </div>
 
       <div v-else class="toolbar">
@@ -155,6 +306,11 @@ async function eliminarProveedor(id) {
             placeholder="Buscar proveedor..."
           />
         </div>
+        <label class="toggle-label">
+          <input type="checkbox" v-model="incluirInactivos" />
+          Incluir desactivados
+        </label>
+        <button v-if="tieneFiltrosProveedores" class="btn-limpiar" @click="limpiarFiltros">Limpiar filtros</button>
       </div>
 
       <div v-if="tabActivo === 'compras'" class="tabla-wrapper">
@@ -170,7 +326,7 @@ async function eliminarProveedor(id) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="c in comprasFiltradas" :key="c.id_compra">
+            <tr v-for="c in comprasFiltradas" :key="keyTabla + '-' + c.id_compra">
               <td class="col-id">{{ c.id_compra }}</td>
               <td class="col-prov">{{ c.proveedor?.nombre || '—' }}</td>
               <td class="col-fecha">{{ c.fecha }}</td>
@@ -227,12 +383,21 @@ async function eliminarProveedor(id) {
       </div>
     </div>
 
-    <CompraFormModal v-if="mostrarFormCompra" @cerrar="cerrarCompra" />
+    <CompraFormModal v-if="mostrarFormCompra" @cerrar="cerrarCompra" @guardado="onCompraGuardada" />
 
     <ProveedorFormModal
       v-if="mostrarFormProveedor"
       :proveedor="proveedorEditando"
       @cerrar="cerrarProveedor"
+      @guardado="onProveedorGuardado"
+    />
+
+    <VistaPreviaPdfModal
+      v-if="mostrarVistaPrevia"
+      :pdf-blob-url="pdfBlobUrl"
+      :cargando="generandoPdf"
+      @cerrar="cerrarVistaPrevia"
+      @descargar="descargarPdf"
     />
   </div>
 </template>
@@ -398,6 +563,100 @@ async function eliminarProveedor(id) {
 
 .search-input::placeholder {
   color: #929079;
+}
+
+.filtro-select,
+.filtro-input {
+  padding: 10px 12px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: #1F2937;
+  outline: none;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filtro-select:focus,
+.filtro-input:focus {
+  border-color: #042D29;
+  box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: #1F2937;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #042D29;
+  cursor: pointer;
+}
+
+.btn-limpiar {
+  padding: 10px 16px;
+  background: #FFFFFF;
+  color: #741102;
+  border: 1.5px solid #741102;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-limpiar:hover {
+  background: rgba(116, 17, 2, 0.05);
+}
+
+.btn-exportar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #FFFFFF;
+  color: #042D29;
+  border: 1.5px solid #042D29;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-exportar:hover:not(:disabled) {
+  background: rgba(4, 45, 41, 0.06);
+  border-color: #052E2A;
+}
+
+.btn-exportar:active:not(:disabled) {
+  background: rgba(4, 45, 41, 0.1);
+  border-color: #741102;
+  color: #741102;
+}
+
+.btn-exportar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.icon-export {
+  width: 18px;
+  height: 18px;
 }
 
 .tabla-wrapper {
