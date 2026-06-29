@@ -79,7 +79,7 @@ function validar() {
   if (!form.value.marca) {
     errores.value.marca = 'Obligatoria'
     valido = false
-  } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.\-]+$/.test(form.value.marca)) {
+  } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.-]+$/.test(form.value.marca)) {
     errores.value.marca = 'Solo letras'
     valido = false
   }
@@ -87,7 +87,7 @@ function validar() {
   if (!form.value.modelo) {
     errores.value.modelo = 'Obligatorio'
     valido = false
-  } else if (!/^[a-zA-Z0-9\s.\-]+$/.test(form.value.modelo)) {
+  } else if (!/^[a-zA-Z0-9\s.-]+$/.test(form.value.modelo)) {
     errores.value.modelo = 'Caracteres no válidos'
     valido = false
   }

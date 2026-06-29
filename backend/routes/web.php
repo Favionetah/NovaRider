@@ -8,6 +8,9 @@ use App\Http\Controllers\PlanillaController;
 use App\Http\Controllers\ProgramacionController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\EstanteController;
+use App\Http\Controllers\ModelosCompatibleController;
+use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\UsuarioController;
@@ -65,12 +68,33 @@ Route::middleware('auth')->group(function () {
         Route::get('/reportes/data', [ReporteController::class, 'data']);
         Route::get('/reportes/pdf', [ReporteController::class, 'exportPdf']);
 
-        Route::get('/productos', function () {
-            $productos = Producto::where('estadoA', true)
-                ->orderBy('nombre')
-                ->get(['id_producto', 'nombre', 'precio_venta', 'costo', 'stock_disponible', 'stock_fisico']);
-            return response()->json(['productos' => $productos]);
-        });
+        // --- Módulo Inventario (Roles 1, 2) ---
+        Route::get('/ubicaciones/arbol', [EstanteController::class, 'arbol']);
+
+        Route::get('/productos', [ProductoController::class, 'index']);
+        Route::post('/productos', [ProductoController::class, 'store']);
+        Route::get('/productos/{id}/motocicletas-compatibles/pdf', [ProductoController::class, 'motocicletasCompatiblesPdf']);
+        Route::get('/productos/{id}/motocicletas-compatibles', [ProductoController::class, 'motocicletasCompatibles']);
+        Route::get('/productos/{id}/modelos', [ProductoController::class, 'modelos']);
+        Route::post('/productos/{id}/modelos', [ProductoController::class, 'modelosSync']);
+        Route::get('/productos/{id}', [ProductoController::class, 'show']);
+        Route::put('/productos/{id}', [ProductoController::class, 'update']);
+        Route::delete('/productos/{id}', [ProductoController::class, 'destroy']);
+        Route::put('/productos/{id}/reactivar', [ProductoController::class, 'reactivar']);
+
+        Route::get('/estantes', [EstanteController::class, 'index']);
+        Route::post('/estantes', [EstanteController::class, 'store']);
+        Route::get('/estantes/{id}', [EstanteController::class, 'show']);
+        Route::put('/estantes/{id}', [EstanteController::class, 'update']);
+        Route::delete('/estantes/{id}', [EstanteController::class, 'destroy']);
+        Route::put('/estantes/{id}/reactivar', [EstanteController::class, 'reactivar']);
+
+        Route::get('/modelos-compatibles', [ModelosCompatibleController::class, 'index']);
+        Route::post('/modelos-compatibles', [ModelosCompatibleController::class, 'store']);
+        Route::get('/modelos-compatibles/{id}', [ModelosCompatibleController::class, 'show']);
+        Route::put('/modelos-compatibles/{id}', [ModelosCompatibleController::class, 'update']);
+        Route::delete('/modelos-compatibles/{id}', [ModelosCompatibleController::class, 'destroy']);
+        Route::put('/modelos-compatibles/{id}/reactivar', [ModelosCompatibleController::class, 'reactivar']);
     });
 
     // --- Grupo para Recepción y Gestión de Clientes (Roles 1, 3, 4) ---

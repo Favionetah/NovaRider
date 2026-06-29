@@ -28,4 +28,15 @@ class Producto extends Model
         'estadoA' => 'boolean',
         'fechahoraA' => 'datetime',
     ];
+
+    public function ubicacion()
+    {
+        return $this->belongsTo(Ubicacion::class, 'id_ubicacion');
+    }
+
+    public function modelosCompatibles()
+    {
+        return $this->belongsToMany(ModelosCompatible::class, 'TProductosModelosCompatibles', 'id_producto', 'id_modelo')
+            ->withPivot('estadoA', 'usuarioA', 'fechahoraA');
+    }
 }

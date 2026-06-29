@@ -442,7 +442,7 @@ const handleProcesarVenta = async () => {
   // 2. EXTRAER LOS PRODUCTOS DEL CARRITO (Usando tus propiedades 'concepto' y 'precio')
   let itemsParaTicket = [];
   try {
-    if (typeof carrito !== 'undefined' && carrito.value && carrito.value.length > 0) {
+    if (typeof carrito.value !== 'undefined' && carrito.value && carrito.value.length > 0) {
       itemsParaTicket = carrito.value.map((item, index) => {
         return {
           id: item.id || index || Math.random(),
@@ -500,7 +500,7 @@ const handleProcesarVenta = async () => {
 
   // 4. PASAR LOS DATOS REALES AL COMPROBANTE EN PANTALLA
   try {
-    if (ticketData !== null) {
+    if (ticketData.value !== null) {
       ticketData.value = {
         nroRecibo: idTicketFinal,
         items: itemsParaTicket, 
@@ -520,10 +520,10 @@ const handleProcesarVenta = async () => {
 
   // 5. LIMPIAR CARRITO Y SOLICITAR REFRESCO AUTOMÁTICO A LARAVEL
   try {
-    if (carrito && carrito.value) {
+    if (carrito.value && carrito.value) {
       carrito.value = [];
     }
-    if (carritoAbierto !== undefined && carritoAbierto !== null) {
+    if (carritoAbierto.value !== undefined && carritoAbierto.value !== null) {
       carritoAbierto.value = false;
     }
     

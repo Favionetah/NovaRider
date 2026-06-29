@@ -164,7 +164,7 @@ class AuthController extends Controller
                 'id' => 'inventario',
                 'nombre' => 'Inventario',
                 'descripcion' => 'Productos, repuestos y stock',
-                'ruta' => null,
+                'ruta' => '/inventario',
                 'color' => '#042D29',
                 'roles_permitidos' => [1, 2],
             ],
