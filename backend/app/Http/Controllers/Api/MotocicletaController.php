@@ -13,24 +13,32 @@ class MotocicletaController extends Controller
 
     public function index(Request $request)
     {
-        $inactivos = $request->boolean('inactivos');
-        $id_cliente = $request->query('id_cliente');
+        try {
+            $inactivos = $request->boolean('inactivos');
+            $id_cliente = $request->query('id_cliente');
 
-        $query = Motocicleta::with('cliente')->orderBy('placa', 'ASC');
+            // 🚀 Cargamos la relación 'cliente' para la vista principal de motos
+            $query = Motocicleta::with('cliente')->orderBy('placa', 'ASC');
 
-        if ($inactivos) {
-            $query->where('estadoA', false);
-        } else {
-            $query->where('estadoA', true);
+            if ($inactivos) {
+                $query->where('estadoA', false);
+            } else {
+                $query->where('estadoA', true);
+            }
+
+            if ($id_cliente) {
+                $query->where('id_cliente', $id_cliente);
+            }
+
+            // 🚀 Traemos todos los campos necesarios completos
+            $motocicletas = $query->get();
+
+            // 🚀 CORRECCIÓN: Devolver el arreglo directamente sin envolverlo en ['motocicletas' => ...]
+            return response()->json($motocicletas);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        if ($id_cliente) {
-            $query->where('id_cliente', $id_cliente);
-        }
-
-        $motocicletas = $query->get();
-
-        return response()->json(['motocicletas' => $motocicletas]);
     }
 
     public function show($id)
@@ -218,6 +226,7 @@ class MotocicletaController extends Controller
         return response()->json(['message' => 'Motocicleta reactivada exitosamente']);
     }
 
+    // 📦 Cambio de tu compañero integrado correctamente
     public function historial($id)
     {
         $motocicleta = Motocicleta::findOrFail($id);

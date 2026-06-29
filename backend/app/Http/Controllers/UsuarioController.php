@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Empleado;
 use App\Models\Rol;
-use App\Models\User;
+use App\Models\User; // 🚀 Tu modelo se llama User
 use App\Traits\AuditoriaTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -308,6 +308,7 @@ class UsuarioController extends Controller
         return response()->json(['roles' => $roles]);
     }
 
+    // 📦 Cambio de tu compañero integrado (Reporte PDF)
     public function reportePdf(Request $request)
     {
         $busqueda = $request->input('busqueda', '');
@@ -374,6 +375,28 @@ class UsuarioController extends Controller
         }
 
         return $pdf->download($filename);
+    }
+
+    // 🚀 Tu cambio integrado (Mecánicos Operativos del Taller)
+    public function obtenerMecanicos()
+    {
+        $mecanicos = User::whereHas('roles', function($query) {
+                $query->where('TRoles.id_rol', 3); // Filtra los usuarios con rol de mecánico
+            })
+            ->where('estadoA', true) // Asegura que el usuario esté activo
+            ->with(['empleado' => function($query) {
+                $query->select('id_empleado', 'primer_nombre', 'apellido_paterno');
+            }])
+            ->get()
+            ->map(function($user) {
+                return [
+                    'id_empleado' => $user->id_usuario, // Usamos el id_usuario para asociar las acciones en Vue
+                    'primer_nombre' => $user->empleado?->primer_nombre ?? 'Sin nombre',
+                    'apellido_paterno' => $user->empleado?->apellido_paterno ?? ''
+                ];
+            });
+
+        return response()->json($mecanicos);
     }
 
     private function formatearUsuario(User $user)
