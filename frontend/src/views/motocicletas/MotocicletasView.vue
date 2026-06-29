@@ -42,7 +42,10 @@ function nombreCliente(moto) {
 
 const motosFiltradas = computed(() => {
   const q = busqueda.value.trim().toLowerCase()
-  return store.motocicletas.filter((m) => {
+  // Seguridad: Asegurar que siempre sea un arreglo iterable
+  const listaMotos = store.motocicletas || []
+  
+  return listaMotos.filter((m) => {
     if (!q) return true
 
     return [
@@ -62,7 +65,10 @@ const motosFiltradas = computed(() => {
 
 const motosInactivasFiltradas = computed(() => {
   const q = busqueda.value.trim().toLowerCase()
-  return store.motocicletasInactivas.filter((m) => {
+  // Seguridad: Asegurar que siempre sea un arreglo iterable
+  const listaInactivas = store.motocicletasInactivas || []
+  
+  return listaInactivas.filter((m) => {
     if (!q) return true
 
     return [
@@ -123,7 +129,7 @@ function cerrarHistorial() {
         >
           Activos
           <span class="tab-badge" :class="tabActivo === 'activos' ? 'badge-active' : 'badge-inactive'">
-            {{ store.motocicletas.length }}
+            {{ (store.motocicletas || []).length }}
           </span>
         </button>
         <button
@@ -133,7 +139,7 @@ function cerrarHistorial() {
         >
           Inactivas
           <span class="tab-badge" :class="tabActivo === 'inactivos' ? 'badge-active' : 'badge-inactive'">
-            {{ store.motocicletasInactivas.length }}
+            {{ (store.motocicletasInactivas || []).length }}
           </span>
         </button>
       </div>

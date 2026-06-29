@@ -13,6 +13,7 @@ use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\UsuarioController;
 use App\Models\Producto;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\OrdenController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -27,6 +28,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/cambiar-contrasena', [AuthController::class, 'cambiarContrasena']);
 
+    // --- Grupo Exclusivo para Administrador (Rol 1) ---
     Route::middleware('role:1')->group(function () {
         Route::get('/roles', [UsuarioController::class, 'roles']);
         Route::get('/usuarios', [UsuarioController::class, 'index']);
@@ -37,6 +39,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar']);
         Route::get('/usuarios/reporte/pdf', [UsuarioController::class, 'reportePdf']);
 
+        // ... Rutas de proveedores, compras, turnos, planillas y reportes se mantienen idénticas ...
         Route::get('/proveedores', [ProveedorController::class, 'index']);
         Route::post('/proveedores', [ProveedorController::class, 'store']);
         Route::get('/proveedores/{id}', [ProveedorController::class, 'show']);
@@ -58,10 +61,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('/planillas/{id}', [PlanillaController::class, 'destroy']);
         Route::get('/planillas/resumen', [PlanillaController::class, 'resumen']);
 
-        Route::get('/programaciones', [ProgramacionController::class, 'index']);
-        Route::post('/programaciones', [ProgramacionController::class, 'store']);
-        Route::get('/programaciones/global', [ProgramacionController::class, 'global']);
-
         Route::get('/reportes/stats', [ReporteController::class, 'systemStats']);
         Route::get('/reportes/data', [ReporteController::class, 'data']);
         Route::get('/reportes/pdf', [ReporteController::class, 'exportPdf']);
@@ -74,6 +73,7 @@ Route::middleware('auth')->group(function () {
         });
     });
 
+    // --- Grupo para Recepción y Gestión de Clientes (Roles 1, 3, 4) ---
     Route::middleware('role:1,3,4')->group(function () {
         Route::get('/clientes', [ClienteController::class, 'index']);
         Route::post('/clientes', [ClienteController::class, 'store']);
@@ -98,6 +98,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/reservas/{id}/registrar-envio', [ReservaController::class, 'registrarEnvio']);
     });
 
+    // --- Grupo Operativo de Taller (Roles 1, 3) ---
     Route::middleware('role:1,3')->group(function () {
         Route::get('/motocicletas', [MotocicletaController::class, 'index']);
         Route::post('/motocicletas', [MotocicletaController::class, 'store']);
@@ -106,5 +107,24 @@ Route::middleware('auth')->group(function () {
         Route::delete('/motocicletas/{id}', [MotocicletaController::class, 'destroy']);
         Route::put('/motocicletas/{id}/reactivar', [MotocicletaController::class, 'reactivar']);
         Route::get('/motocicletas/{id}/historial', [MotocicletaController::class, 'historial']);
+
+        Route::get('/mecanicos', [UsuarioController::class, 'obtenerMecanicos']); 
+
+        Route::get('/programaciones', [ProgramacionController::class, 'index']);
+        Route::post('/programaciones', [ProgramacionController::class, 'store']);
+        Route::get('/programaciones/global', [ProgramacionController::class, 'global']);
+
+        // === 🖨️ RUTAS DE ÓRDENES (REORDENADAS CORRECTAMENTE) ===
+        
+        // 1. Primero las rutas estáticas específicas (¡Crucial para evitar el 404!)
+        Route::get('/ordenes/reporte/pdf', [OrdenController::class, 'reportePdf']);
+        Route::post('/ordenes/guardar-verificacion', [OrdenController::class, 'guardarListaVerificacion']);
+        Route::get('/ordenes', [OrdenController::class, 'index']);
+        Route::post('/ordenes', [OrdenController::class, 'store']);
+
+        // 2. Al final las rutas con parámetros dinámicos {id}
+        Route::put('/ordenes/{id}', [OrdenController::class, 'update']);
+        Route::delete('/ordenes/{id}', [OrdenController::class, 'destroy']);
+        Route::put('/ordenes/{id}/cambiar-estado', [OrdenController::class, 'cambiarEstado']);
     });
 });

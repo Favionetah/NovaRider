@@ -14,7 +14,8 @@ export const useMotocicletasStore = defineStore('motocicletas', () => {
     try {
       const url = id_cliente ? `/motocicletas?id_cliente=${id_cliente}` : '/motocicletas'
       const res = await api.get(url)
-      motocicletas.value = res.data.motocicletas
+      // 🚀 CORREGIDO: Laravel ahora devuelve el arreglo directo, no un objeto envuelto
+      motocicletas.value = res.data || []
     } catch (err) {
       error.value = err.response?.data?.message || 'Error al cargar motocicletas'
     } finally {
@@ -27,7 +28,8 @@ export const useMotocicletasStore = defineStore('motocicletas', () => {
     error.value = null
     try {
       const res = await api.get('/motocicletas?inactivos=1')
-      motocicletasInactivas.value = res.data.motocicletas
+      // 🚀 CORREGIDO: Mapeo directo del arreglo de inactivas
+      motocicletasInactivas.value = res.data || []
     } catch (err) {
       error.value = err.response?.data?.message || 'Error al cargar motocicletas inactivas'
     } finally {
@@ -36,16 +38,30 @@ export const useMotocicletasStore = defineStore('motocicletas', () => {
   }
 
   async function crear(data) {
-    const res = await api.post('/motocicletas', data)
-    motocicletas.value.push(res.data.motocicleta)
-    return res.data
+    loading.value = true
+    error.value = null
+    try {
+      const res = await api.post('/motocicletas', data)
+      
+      // Volvemos a listar para refrescar el almacén de forma limpia y actualizada
+      await listar() 
+      
+      return res.data
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Error al guardar la motocicleta'
+      throw err // Re-lanzamos el error para que el modal sepa que no debe cerrarse
+    } finally {
+      loading.value = false
+    }
   }
 
   async function actualizar(id, data) {
     const res = await api.put(`/motocicletas/${id}`, data)
     const idx = motocicletas.value.findIndex((m) => m.id_motocicleta === id)
     if (idx !== -1) {
-      motocicletas.value[idx] = res.data.motocicleta
+      // Nota: Si tu backend también devuelve la moto directa en update sin envolver, 
+      // podrías requerir cambiar res.data.motocicleta por res.data.v_motocicleta o res.data directamente.
+      motocicletas.value[idx] = res.data.motocicleta || res.data
     }
     return res.data
   }

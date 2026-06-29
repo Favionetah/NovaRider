@@ -63,6 +63,17 @@ const router = createRouter({
       name: 'acceso-denegado',
       component: () => import('@/views/AccesoDenegadoView.vue'),
     },
+    /* =========================================================================
+       NUEVA RUTA QUIRÚRGICA: MÓDULO DE TALLER Y REPARACIONES
+       ========================================================================= */
+    {
+      path: '/taller',
+      name: 'taller',
+      // Apunta directo a la carpeta aislada que creaste en el Paso 1
+      component: () => import('@/views/taller/TallerDashboard.vue'),
+      // Requiere sesión activa y permite acceso a los roles autorizados (Ej: Admin = 1, Mecánicos = 3)
+      meta: { requiresAuth: true, roles: [1, 3] }, 
+    },
   ],
 })
 
