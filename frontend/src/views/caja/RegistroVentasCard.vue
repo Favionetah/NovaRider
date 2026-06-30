@@ -1,188 +1,127 @@
 <script setup>
 import { ref } from 'vue'
 
-defineProps({
+const props = defineProps({
   cajaAbierta: { type: Boolean, default: false },
+  clientes: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['onAgregarItem'])
+const emit = defineEmits(['onAgregarItem', 'onCambiarCliente'])
 
 const concepto = ref('')
-const precio = ref(0)
+const precio = ref('')
+const clienteSeleccionadoLocal = ref('Cliente General')
 
-function agregar() {
-  if (!concepto.value.trim() || precio.value <= 0) return
+function agregarAlCarrito() {
+  if (!concepto.value || !precio.value) return
+
   emit('onAgregarItem', {
-    concepto: concepto.value.trim(),
-    precio: parseFloat(precio.value),
+    id: Date.now(), 
+    concepto: concepto.value,
+    precio: parseFloat(precio.value)
   })
+
   concepto.value = ''
-  precio.value = 0
+  precio.value = ''
+}
+
+function actualizarClientePadre() {
+  emit('onCambiarCliente', clienteSeleccionadoLocal.value)
 }
 </script>
 
 <template>
-  <div class="card-seccion">
-    <div class="card-seccion-header">
-      <div class="header-row">
-        <svg viewBox="0 0 24 24" fill="none" width="20" height="20" class="header-icon">
-          <path d="M12 5v14M5 12h14" stroke="#042D29" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <h3>Registrar Venta</h3>
-      </div>
-      <p class="texto-ayuda">Agregue productos o servicios al carrito de venta</p>
+  <div class="registro-ventas-card">
+    <div class="card-header">
+      <svg viewBox="0 0 24 24" fill="none" width="20" height="20" class="icon-header">
+        <path d="M12 4v16m8-8H4" stroke="#042D29" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <h3>Registrar Venta</h3>
     </div>
 
-    <div class="card-seccion-body">
-      <div v-if="!cajaAbierta" class="empty-state">
-        Debe abrir la jornada para registrar ventas.
-      </div>
-
-      <div v-else class="form-vertical">
+    <div class="card-body">
+      <div class="form-grid">
         <div class="form-group">
-          <label>Concepto / Producto / Servicio</label>
-          <input
-            v-model="concepto"
-            type="text"
-            placeholder="Ej: Cambio de aceite, Filtro de aire..."
-            @keyup.enter="agregar"
+          <label>Concepto / Servicio</label>
+          <input 
+            v-model="concepto" 
+            type="text" 
+            placeholder="Ej. Lavado de Motocicleta" 
+            :disabled="!cajaAbierta"
           />
         </div>
-        <div class="form-row">
-          <div class="form-group" style="flex: 1;">
-            <label>Precio (S/)</label>
-            <input
-              v-model.number="precio"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              @keyup.enter="agregar"
+
+        <div class="form-group">
+          <label>Precio Unitario</label>
+          <div class="input-prefix-wrapper">
+            <span class="prefix">Bs.</span>
+            <input 
+              v-model.number="precio" 
+              type="number" 
+              placeholder="0.00" 
+              min="0" 
+              :disabled="!cajaAbierta"
             />
           </div>
-          <div class="form-action-btn">
-            <button class="btn-primario" @click="agregar">
-              <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-              Agregar
-            </button>
-          </div>
+        </div>
+
+        <div class="form-group full-width-group">
+          <label class="label-resaltado">Cliente Beneficiario</label>
+          <select 
+            v-model="clienteSeleccionadoLocal" 
+            @change="actualizarClientePadre"
+            :disabled="!cajaAbierta"
+            class="select-formulario-central"
+          >
+            <option v-for="c in clientes" :key="c.id" :value="c.nombre">
+              {{ c.nombre }}
+            </option>
+          </select>
         </div>
       </div>
+
+      <button 
+        class="btn-agregar-carrito" 
+        :disabled="!cajaAbierta || !concepto || !precio"
+        @click="agregarAlCarrito"
+      >
+        <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        Agregar al Carrito
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.card-seccion {
-  background: #FFFFFF;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  overflow: hidden;
-  border-top: 4px solid transparent;
-  border-image: linear-gradient(90deg, #042D29 0%, #741102 100%) 1;
+.registro-ventas-card { 
+  background: #FFFFFF; 
+  border-radius: 16px; 
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05); 
+  overflow: hidden; 
+  height: 100%; 
+  display: flex; 
+  flex-direction: column; 
 }
-
-.card-seccion-header {
-  padding: 20px 24px 12px;
-}
-
-.header-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-icon { flex-shrink: 0; }
-
-.card-seccion-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #042D29;
-  margin: 0;
-}
-
-.texto-ayuda {
-  font-size: 13px;
-  color: #929079;
-  margin: 4px 0 0;
-}
-
-.card-seccion-body {
-  padding: 12px 24px 24px;
-}
-
-.empty-state {
-  text-align: center;
-  color: #929079;
-  padding: 20px 0;
-  font-size: 13px;
-  font-style: italic;
-}
-
-.form-vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.form-row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.form-group label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #1F2937;
-}
-
-.form-group input {
-  padding: 10px 12px;
-  border: 1.5px solid #D1D5DB;
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  color: #1F2937;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.form-group input:focus {
-  border-color: #042D29;
-  box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
-}
-
-.form-action-btn {
-  padding-bottom: 1px;
-}
-
-.btn-primario {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: #042D29;
-  color: #FFFFFF;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-primario:hover { background: #052E2A; }
+.card-header { display: flex; align-items: center; gap: 10px; padding: 18px 24px; border-bottom: 1px solid #E5E7EB; background: #FAFAFA; }
+.card-header h3 { margin: 0; font-size: 15px; font-weight: 700; color: #042D29; }
+.icon-header { color: #042D29; }
+.card-body { padding: 24px; display: flex; flex-direction: column; gap: 20px; flex: 1; justify-content: space-between; }
+.form-grid { display: flex; flex-direction: column; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 12px; font-weight: 600; color: #4B5563; text-transform: uppercase; }
+.form-group input { padding: 10px 12px; border: 1.5px solid #D1D5DB; border-radius: 8px; font-size: 14px; outline: none; background: #FFFFFF; color: #1F2937; transition: border-color 0.2s; }
+.form-group input:focus { border-color: #042D29; }
+.input-prefix-wrapper { position: relative; display: flex; align-items: center; }
+.prefix { position: absolute; left: 12px; font-size: 14px; font-weight: 600; color: #4B5563; }
+.input-prefix-wrapper input { padding-left: 40px; width: 100%; box-sizing: border-box; }
+.full-width-group { margin-top: 4px; }
+.label-resaltado { color: #042D29 !important; font-weight: 700 !important; }
+.select-formulario-central { width: 100%; padding: 11px 12px; border: 1.5px solid #D1D5DB; border-radius: 8px; font-size: 14px; font-weight: 600; background-color: #FFFFFF; color: #1F2937; outline: none; transition: border-color 0.2s; cursor: pointer; }
+.select-formulario-central:focus { border-color: #042D29; }
+.select-formulario-central:disabled { background: #F3F4F6; cursor: not-allowed; color: #9CA3AF; }
+.btn-agregar-carrito { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: #042D29; color: #FFFFFF; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: auto; }
+.btn-agregar-carrito:hover:not(:disabled) { background: #0b4640; }
+.btn-agregar-carrito:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
