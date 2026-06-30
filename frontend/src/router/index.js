@@ -47,6 +47,12 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: [1] },
     },
     {
+      path: '/caja',
+      name: 'caja',
+      component: () => import('@/views/caja/CajaView.vue'),
+      meta: { requiresAuth: true, roles: [1, 2] },
+    },
+    {
       path: '/inventario',
       name: 'inventario',
       component: () => import('@/views/inventario/InventarioView.vue'),

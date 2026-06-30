@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\MotocicletaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CajaController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\PlanillaController;
 use App\Http\Controllers\ProgramacionController;
@@ -67,6 +68,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/reportes/stats', [ReporteController::class, 'systemStats']);
         Route::get('/reportes/data', [ReporteController::class, 'data']);
         Route::get('/reportes/pdf', [ReporteController::class, 'exportPdf']);
+
+        // --- Módulo Caja y Ventas ---
+        Route::post('/caja/abrir', [CajaController::class, 'abrirCaja']);
+        Route::post('/caja/ventas', [CajaController::class, 'crearRecibo']);
+        Route::get('/caja/ventas', [CajaController::class, 'obtenerVentas']);
+        Route::post('/caja/cerrar', [CajaController::class, 'cerrarCaja']);
 
         // --- Módulo Inventario (Roles 1, 2) ---
         Route::get('/ubicaciones/arbol', [EstanteController::class, 'arbol']);

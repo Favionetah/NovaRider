@@ -172,7 +172,7 @@ class AuthController extends Controller
                 'id' => 'ventas',
                 'nombre' => 'Ventas y Caja',
                 'descripcion' => 'Registro de ventas y arqueo de caja',
-                'ruta' => null,
+                'ruta' => '/caja',
                 'color' => '#042D29',
                 'roles_permitidos' => [1, 2],
             ],
