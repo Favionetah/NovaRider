@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted, nextTick, watch } from 'vue'
 import { useReservasStore } from '@/stores/reservas'
+import { useToastStore } from '@/stores/toast'
 import ReservaFormModal from './ReservaFormModal.vue'
 import EnvioFormModal from './EnvioFormModal.vue'
 
 const store = useReservasStore()
+const toast = useToastStore()
 
 const busqueda = ref('')
 const filtroEstado = ref('')
@@ -15,8 +17,13 @@ const convertirModal = ref(false)
 const reservaConvertir = ref(null)
 const metodoPago = ref('')
 const descuento = ref(0)
-const mensajeExito = ref('')
 const detalleExpandido = ref(null)
+
+const tabActivo = ref('activas')
+const fechaCancelDesde = ref('')
+const fechaCancelHasta = ref('')
+const cancelarModal = ref(false)
+const reservaCancelar = ref(null)
 
 onMounted(async () => {
   await store.listar()
@@ -24,7 +31,22 @@ onMounted(async () => {
   animarEntrada()
 })
 
+watch(tabActivo, async (val) => {
+  if (val === 'canceladas') {
+    await store.listarCanceladas()
+  } else {
+    busqueda.value = ''
+    filtroEstado.value = ''
+    fechaCancelDesde.value = ''
+    fechaCancelHasta.value = ''
+    await store.listar()
+  }
+  await nextTick()
+  animarEntrada()
+})
+
 watch([busqueda, filtroEstado], async () => {
+  if (tabActivo.value !== 'activas') return
   const params = {}
   if (filtroEstado.value) params.estado = filtroEstado.value
   if (busqueda.value) params.busqueda = busqueda.value
@@ -33,14 +55,32 @@ watch([busqueda, filtroEstado], async () => {
   animarEntrada()
 })
 
+watch([busqueda, fechaCancelDesde, fechaCancelHasta], async () => {
+  if (tabActivo.value !== 'canceladas') return
+  const params = {}
+  if (busqueda.value) params.busqueda = busqueda.value
+  if (fechaCancelDesde.value) params.fecha_desde = fechaCancelDesde.value
+  if (fechaCancelHasta.value) params.fecha_hasta = fechaCancelHasta.value
+  await store.listarCanceladas(params)
+  await nextTick()
+  animarEntrada()
+})
+
 function animarEntrada() {
   gsap.fromTo('.page-header', { y: -15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out' })
   gsap.fromTo('.toolbar', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', delay: 0.1 })
   gsap.fromTo('.tabla-wrapper', { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.15 })
-  gsap.fromTo('.tabla-contenido tbody tr', { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
+  gsap.from('.tabla-contenido tbody tr', { y: 10, opacity: 0, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
 }
 
-const estados = ['pendiente', 'completada', 'enviado', 'cancelada']
+function animarFilas() {
+  gsap.from(
+    '.tabla-contenido tbody tr:not(.fila-detalle)',
+    { y: 10, opacity: 0, duration: 0.25, stagger: 0.04, ease: 'power2.out' }
+  )
+}
+
+const estados = ['pendiente', 'completada', 'enviado']
 
 function abrirForm() {
   mostrarForm.value = true
@@ -48,6 +88,12 @@ function abrirForm() {
 
 function cerrarForm() {
   mostrarForm.value = false
+}
+
+function onReservaGuardada() {
+  mostrarForm.value = false
+  toast.show('Reserva creada exitosamente', 'success')
+  nextTick(() => animarFilas())
 }
 
 function toggleDetalle(id) {
@@ -64,9 +110,28 @@ function cerrarEnvio() {
   reservaEnvio.value = null
 }
 
-async function cancelarReserva(id) {
-  if (!confirm('¿Estás seguro de cancelar esta reserva?')) return
-  await store.cancelar(id)
+function onEnvioGuardado() {
+  mostrarEnvio.value = false
+  reservaEnvio.value = null
+  toast.show('Envío registrado exitosamente', 'success')
+  nextTick(() => animarFilas())
+}
+
+function abrirCancelar(reserva) {
+  reservaCancelar.value = reserva
+  cancelarModal.value = true
+}
+
+function cerrarCancelar() {
+  cancelarModal.value = false
+  reservaCancelar.value = null
+}
+
+async function confirmarCancelar() {
+  await store.cancelar(reservaCancelar.value.id_reserva)
+  toast.show('Reserva cancelada', 'success')
+  cerrarCancelar()
+  nextTick(() => animarFilas())
 }
 
 function abrirConvertir(reserva) {
@@ -86,9 +151,9 @@ async function confirmarConvertir() {
   const data = { metodo_pago: metodoPago.value }
   if (descuento.value > 0) data.descuento = descuento.value
   const res = await store.convertirVenta(reservaConvertir.value.id_reserva, data)
-  mensajeExito.value = res.message
-  setTimeout(() => mensajeExito.value = '', 4000)
+  toast.show(res.message || 'Reserva convertida a venta exitosamente', 'success')
   cerrarConvertir()
+  nextTick(() => animarFilas())
 }
 
 function estadoClase(estado) {
@@ -101,7 +166,7 @@ function estadoClase(estado) {
   <div class="reservas-page">
     <header class="page-header">
       <h1>Reservas y Envíos</h1>
-      <button class="btn-nuevo" @click="abrirForm">
+      <button v-if="tabActivo === 'activas'" class="btn-nuevo" @click="abrirForm">
         <svg viewBox="0 0 24 24" fill="none" class="icon-plus">
           <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
         </svg>
@@ -110,10 +175,33 @@ function estadoClase(estado) {
     </header>
 
     <p v-if="store.error" class="mensaje-error">{{ store.error }}</p>
-    <p v-if="mensajeExito" class="mensaje-exito">{{ mensajeExito }}</p>
 
     <div class="content-card">
-      <div class="toolbar">
+      <div class="tabs">
+        <button
+          class="tab"
+          :class="{ active: tabActivo === 'activas' }"
+          @click="tabActivo = 'activas'"
+        >
+          <span class="tab-label">Activas</span>
+          <span class="tab-badge" :class="tabActivo === 'activas' ? 'badge-active' : 'badge-inactive'">
+            {{ store.items.length }}
+          </span>
+        </button>
+        <button
+          class="tab"
+          :class="{ active: tabActivo === 'canceladas' }"
+          @click="tabActivo = 'canceladas'"
+        >
+          <span class="tab-label">Canceladas</span>
+          <span class="tab-badge" :class="tabActivo === 'canceladas' ? 'badge-active' : 'badge-inactive'">
+            {{ store.itemsCanceladas.length }}
+          </span>
+        </button>
+      </div>
+
+      <div v-if="tabActivo === 'activas'">
+        <div class="toolbar">
         <div class="search-wrapper">
           <svg viewBox="0 0 24 24" fill="none" class="search-icon">
             <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5" />
@@ -148,14 +236,15 @@ function estadoClase(estado) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="r in store.items" :key="r.id_reserva">
+            <template v-for="r in store.items" :key="r.id_reserva">
+            <tr>
               <td class="col-id">{{ r.id_reserva }}</td>
               <td class="col-cli">{{ r.cliente?.nombre_completo || '—' }}</td>
               <td class="col-fecha">{{ r.fecha_solicitud }}</td>
               <td class="col-prods">{{ r.detalles?.length || 0 }}</td>
               <td class="col-adelanto">
                 <template v-if="r.monto_adelanto > 0">
-                  ${{ Number(r.monto_adelanto).toFixed(2) }}
+                  Bs {{ Number(r.monto_adelanto).toFixed(2) }}
                   <span class="metodo-pago">{{ r.adelanto_metodo_pago }}</span>
                 </template>
                 <span v-else class="sin-adelanto">—</span>
@@ -171,7 +260,12 @@ function estadoClase(estado) {
                 <span v-else class="sin-envio">—</span>
               </td>
               <td class="col-acc">
-                <button class="btn-accion" @click="toggleDetalle(r.id_reserva)" title="Detalle">
+                <button
+                  class="btn-accion"
+                  :class="{ 'btn-detalle-activo': detalleExpandido === r.id_reserva }"
+                  @click="toggleDetalle(r.id_reserva)"
+                  title="Detalle"
+                >
                   <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
                     <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" />
                     <path d="M21 12c0 1.5-4 7-9 7s-9-5.5-9-7 4-7 9-7 9 5.5 9 7z" stroke="currentColor" stroke-width="1.5" />
@@ -207,7 +301,7 @@ function estadoClase(estado) {
                 <button
                   v-if="r.estado === 'pendiente'"
                   class="btn-accion btn-eliminar"
-                  @click="cancelarReserva(r.id_reserva)"
+                  @click="abrirCancelar(r)"
                   title="Cancelar"
                 >
                   <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
@@ -217,6 +311,26 @@ function estadoClase(estado) {
               </td>
             </tr>
 
+            <tr v-if="detalleExpandido === r.id_reserva" class="fila-detalle">
+              <td colspan="8">
+                <div class="detalle-contenido">
+                  <div class="detalle-productos">
+                    <div v-for="d in r.detalles || []" :key="d.id_detalle_reserva" class="detalle-item">
+                      <span class="detalle-item-nombre">{{ d.producto?.nombre || '—' }}</span>
+                      <span class="detalle-item-cant">x{{ d.cantidad_reservada }}</span>
+                      <span class="detalle-item-precio">Bs {{ Number(d.producto?.precio_venta).toFixed(2) }} c/u</span>
+                    </div>
+                  </div>
+                  <div class="detalle-meta">
+                    <span v-if="r.fecha_expiracion"><strong>Expira:</strong> {{ r.fecha_expiracion }}</span>
+                    <span v-if="r.departamento_origen"><strong>Origen:</strong> {{ r.departamento_origen }}</span>
+                    <span v-if="r.monto_adelanto > 0"><strong>Adelanto:</strong> Bs {{ Number(r.monto_adelanto).toFixed(2) }} ({{ r.adelanto_metodo_pago }})</span>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            </template>
+
             <tr v-if="store.items.length === 0">
               <td colspan="8" class="sin-datos">
                 {{ busqueda || filtroEstado ? 'No se encontraron reservas' : 'No hay reservas registradas' }}
@@ -225,17 +339,146 @@ function estadoClase(estado) {
           </tbody>
         </table>
       </div>
+      </div>
+
+      <div v-else>
+        <div class="toolbar">
+          <div class="search-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" class="search-icon">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5" />
+              <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            <input
+              v-model="busqueda"
+              type="text"
+              class="search-input"
+              placeholder="Buscar por cliente o # reserva..."
+            />
+          </div>
+          <div class="date-filter">
+            <label class="date-filter-label">Desde</label>
+            <input
+              v-model="fechaCancelDesde"
+              type="date"
+              class="filtro-input"
+            />
+          </div>
+          <div class="date-filter">
+            <label class="date-filter-label">Hasta</label>
+            <input
+              v-model="fechaCancelHasta"
+              type="date"
+              class="filtro-input"
+            />
+          </div>
+        </div>
+
+        <div v-if="store.loadingCanceladas" class="cargando">Cargando reservas canceladas...</div>
+
+        <div v-else class="tabla-wrapper">
+          <table class="tabla-contenido">
+            <thead>
+              <tr>
+                <th class="col-id">#</th>
+                <th class="col-cli">Cliente</th>
+                <th class="col-fecha">Solicitud</th>
+                <th class="col-fecha">Cancelación</th>
+                <th class="col-prods">Productos</th>
+                <th class="col-acc">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="r in store.itemsCanceladas" :key="r.id_reserva">
+              <tr>
+                <td class="col-id">{{ r.id_reserva }}</td>
+                <td class="col-cli">{{ r.cliente?.nombre_completo || '—' }}</td>
+                <td class="col-fecha">{{ r.fecha_solicitud }}</td>
+                <td class="col-fecha">{{ r.fechahoraA ? r.fechahoraA.substring(0, 10) : '—' }}</td>
+                <td class="col-prods">{{ r.detalles?.length || 0 }}</td>
+                <td class="col-acc">
+                  <button
+                    class="btn-accion"
+                    :class="{ 'btn-detalle-activo': detalleExpandido === r.id_reserva }"
+                    @click="toggleDetalle(r.id_reserva)"
+                    title="Detalle"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" />
+                      <path d="M21 12c0 1.5-4 7-9 7s-9-5.5-9-7 4-7 9-7 9 5.5 9 7z" stroke="currentColor" stroke-width="1.5" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+
+              <tr v-if="detalleExpandido === r.id_reserva" class="fila-detalle">
+                <td colspan="6">
+                  <div class="detalle-contenido">
+                    <div class="detalle-productos">
+                      <div v-for="d in r.detalles || []" :key="d.id_detalle_reserva" class="detalle-item">
+                        <span class="detalle-item-nombre">{{ d.producto?.nombre || '—' }}</span>
+                        <span class="detalle-item-cant">x{{ d.cantidad_reservada }}</span>
+                        <span class="detalle-item-precio">Bs {{ Number(d.producto?.precio_venta).toFixed(2) }} c/u</span>
+                      </div>
+                    </div>
+                    <div class="detalle-meta">
+                      <span v-if="r.fecha_expiracion"><strong>Expira:</strong> {{ r.fecha_expiracion }}</span>
+                      <span v-if="r.departamento_origen"><strong>Origen:</strong> {{ r.departamento_origen }}</span>
+                      <span v-if="r.monto_adelanto > 0"><strong>Adelanto:</strong> Bs {{ Number(r.monto_adelanto).toFixed(2) }} ({{ r.adelanto_metodo_pago }})</span>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+              </template>
+
+              <tr v-if="store.itemsCanceladas.length === 0">
+                <td colspan="6" class="sin-datos">
+                  {{ busqueda || fechaCancelDesde || fechaCancelHasta ? 'No se encontraron reservas canceladas con ese criterio' : 'No hay reservas canceladas' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
-    <ReservaFormModal v-if="mostrarForm" @cerrar="cerrarForm" />
+    <ReservaFormModal
+      v-if="mostrarForm"
+      :key="'reserva-' + mostrarForm"
+      @cerrar="cerrarForm"
+      @guardado="onReservaGuardada"
+    />
 
     <EnvioFormModal
       v-if="mostrarEnvio"
+      :key="'envio-' + mostrarEnvio"
       :reserva="reservaEnvio"
       @cerrar="cerrarEnvio"
+      @guardado="onEnvioGuardado"
     />
 
-    <div v-if="convertirModal" class="modal-overlay" @click.self="cerrarConvertir">
+    <div v-if="cancelarModal" class="modal-overlay">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <h2>Cancelar Reserva</h2>
+          <button class="btn-cerrar" @click="cerrarCancelar">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <p class="convertir-info">
+            &iquest;Est&aacute;s seguro de cancelar la reserva #{{ reservaCancelar?.id_reserva }} de
+            <strong>{{ reservaCancelar?.cliente?.nombre_completo }}</strong>?
+          </p>
+          <p class="nota">Los productos reservados volver&aacute;n a estar disponibles en stock.</p>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-cancelar" @click="cerrarCancelar">Volver</button>
+          <button class="btn-confirmar-eliminar" @click="confirmarCancelar">S&iacute;, cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="convertirModal" class="modal-overlay">
       <div class="modal-card modal-sm">
         <div class="modal-header">
           <h2>Convertir a Venta</h2>
@@ -339,8 +582,62 @@ function estadoClase(estado) {
   border-image: linear-gradient(90deg, #042D29, #741102) 1;
 }
 
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #E5E7EB;
+  padding: 0 24px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: #929079;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: -1px;
+}
+
+.tab:hover { color: #042D29; }
+
+.tab.active {
+  color: #042D29;
+  font-weight: 600;
+  border-bottom-color: #042D29;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-active {
+  background: rgba(4, 45, 41, 0.1);
+  color: #042D29;
+}
+
+.badge-inactive {
+  background: #F3F4F6;
+  color: #929079;
+}
+
 .toolbar {
   display: flex;
+  align-items: center;
   gap: 12px;
   padding: 16px 24px;
   border-bottom: 1px solid #F3F4F6;
@@ -397,6 +694,44 @@ function estadoClase(estado) {
 .filtro-select:focus {
   border-color: #042D29;
   box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
+}
+
+.filtro-input {
+  padding: 10px 12px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: #1F2937;
+  outline: none;
+  background: #FFFFFF;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filtro-input:focus {
+  border-color: #042D29;
+  box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
+}
+
+.date-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-filter-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #929079;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cargando {
+  text-align: center;
+  color: #929079;
+  padding: 40px;
+  font-size: 14px;
 }
 
 .tabla-wrapper { overflow-x: auto; }
@@ -504,8 +839,66 @@ function estadoClase(estado) {
 .btn-eliminar { color: #741102; }
 .btn-eliminar:hover { border-color: #741102; background: rgba(116, 17, 2, 0.05); }
 
-.page-header, .toolbar, .tabla-wrapper,
-.tabla-contenido tbody tr { opacity: 0; }
+.btn-detalle-activo {
+  border-color: #042D29;
+  background: rgba(4, 45, 41, 0.1);
+  color: #042D29;
+}
+
+.page-header, .toolbar, .tabla-wrapper { opacity: 0; }
+
+.fila-detalle td {
+  padding: 0;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.detalle-contenido {
+  padding: 16px 24px 16px 56px;
+}
+
+.detalle-productos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detalle-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.detalle-item-nombre {
+  flex: 1;
+  font-weight: 500;
+  color: #1F2937;
+}
+
+.detalle-item-cant {
+  color: #929079;
+  min-width: 40px;
+}
+
+.detalle-item-precio {
+  color: #042D29;
+  font-weight: 600;
+  min-width: 90px;
+  text-align: right;
+}
+
+.detalle-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: #929079;
+}
+
+.detalle-meta strong {
+  color: #1F2937;
+}
 
 .sin-datos {
   text-align: center;
@@ -641,4 +1034,26 @@ function estadoClase(estado) {
 
 .btn-guardar:hover { background: #052E2A; }
 .btn-guardar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-confirmar-eliminar {
+  padding: 10px 24px;
+  background: #741102;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-confirmar-eliminar:hover { background: #8C1503; }
+
+.nota {
+  font-size: 13px;
+  color: #929079;
+  font-style: italic;
+  margin-top: 8px;
+}
 </style>

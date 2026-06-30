@@ -48,7 +48,6 @@ async function guardar() {
     passwordActual.value = ''
     nuevaPassword.value = ''
     confirmarPassword.value = ''
-    setTimeout(() => cerrar(), 1500)
   } catch (err) {
     error.value = err.response?.data?.message || 'Error al cambiar la contraseña'
   } finally {
@@ -67,7 +66,13 @@ async function guardar() {
 
       <form class="modal-body" @submit.prevent="guardar">
         <div v-if="error" class="form-error">{{ error }}</div>
-        <div v-if="success" class="form-success">Contrase&ntilde;a actualizada exitosamente</div>
+        <div v-if="success" class="form-success">
+          <svg viewBox="0 0 24 24" fill="none" class="success-icon" width="24" height="24">
+            <circle cx="12" cy="12" r="10" stroke="#2F855A" stroke-width="2"/>
+            <path d="M8 12l3 3 5-5" stroke="#2F855A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Contrase&ntilde;a actualizada exitosamente</span>
+        </div>
 
         <div class="form-group">
           <label class="form-label">Contrase&ntilde;a actual</label>
@@ -100,8 +105,8 @@ async function guardar() {
         </div>
 
         <div class="modal-actions">
-          <button type="button" class="btn-cancelar" @click="cerrar">Cancelar</button>
-          <button type="submit" class="btn-guardar" :disabled="loading">
+          <button type="button" class="btn-cancelar" @click="cerrar">{{ success ? 'Cerrar' : 'Cancelar' }}</button>
+          <button v-if="!success" type="submit" class="btn-guardar" :disabled="loading">
             {{ loading ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
@@ -175,14 +180,22 @@ async function guardar() {
 }
 
 .form-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   background: #F0FFF4;
-  border-left: 3px solid #2F855A;
+  border: 2px solid #2F855A;
   color: #2F855A;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
   margin-bottom: 16px;
   animation: slideDown 0.25s ease;
+}
+
+.success-icon {
+  flex-shrink: 0;
 }
 
 @keyframes slideDown {

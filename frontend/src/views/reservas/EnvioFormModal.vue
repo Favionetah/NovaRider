@@ -6,7 +6,7 @@ const props = defineProps({
   reserva: { type: Object, required: true },
 })
 
-const emit = defineEmits(['cerrar'])
+const emit = defineEmits(['cerrar', 'guardado'])
 
 const store = useReservasStore()
 
@@ -30,13 +30,32 @@ function cerrar() {
   emit('cerrar')
 }
 
+function validar() {
+  errores.value = {}
+  let ok = true
+  if (!form.value.empresa_transporte.trim()) {
+    errores.value.empresa_transporte = ['La empresa de transporte es requerida']
+    ok = false
+  }
+  if (!form.value.nro_guia.trim()) {
+    errores.value.nro_guia = ['El número de guía es requerido']
+    ok = false
+  }
+  return ok
+}
+
 async function guardar() {
   guardando.value = true
-  errores.value = {}
   errorGeneral.value = ''
+
+  if (!validar()) {
+    guardando.value = false
+    return
+  }
 
   try {
     await store.registrarEnvio(props.reserva.id_reserva, form.value)
+    emit('guardado')
     cerrar()
   } catch (err) {
     const data = err.response?.data
@@ -52,7 +71,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card modal-sm">
       <div class="modal-header">
         <h2>Registrar Envío</h2>

@@ -1,6 +1,7 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth'
 import AppHeader from '@/components/AppHeader.vue'
+import ToastMessage from '@/components/ToastMessage.vue'
 
 const auth = useAuthStore()
 </script>
@@ -9,6 +10,7 @@ const auth = useAuthStore()
   <div>
     <AppHeader v-if="auth.isAuthenticated" />
     <router-view />
+    <ToastMessage />
   </div>
 </template>
 

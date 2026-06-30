@@ -2,13 +2,15 @@
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
 
 const router = useRouter()
 const auth = useAuthStore()
+const toast = useToastStore()
 
 const username = ref('')
 const password = ref('')
-const mensajeError = ref('')
+const mostrarPassword = ref(false)
 const enviando = ref(false)
 const btnRef = ref(null)
 
@@ -81,13 +83,12 @@ function botonLeave() {
 }
 
 async function iniciarSesion() {
-  mensajeError.value = ''
   enviando.value = true
   try {
     await auth.login(username.value, password.value)
     router.push('/')
   } catch (err) {
-    mensajeError.value = err.message
+    toast.show(err.message, 'error')
   } finally {
     enviando.value = false
   }
@@ -110,8 +111,6 @@ async function iniciarSesion() {
         <p class="login-subtitle">Taller de Motocicletas</p>
 
         <form @submit.prevent="iniciarSesion" class="login-form">
-          <p v-if="mensajeError" class="mensaje-error">{{ mensajeError }}</p>
-
           <div class="field-group">
             <label for="username">Usuario</label>
             <input
@@ -126,14 +125,32 @@ async function iniciarSesion() {
 
           <div class="field-group">
             <label for="password">Contrase&ntilde;a</label>
-            <input
-              id="password"
-              v-model="password"
-              type="password"
-              placeholder="Ingrese su contrase&ntilde;a"
-              required
-              autocomplete="current-password"
-            />
+            <div class="password-wrapper">
+              <input
+                id="password"
+                v-model="password"
+                :type="mostrarPassword ? 'text' : 'password'"
+                placeholder="Ingrese su contrase&ntilde;a"
+                required
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="password-toggle"
+                @click="mostrarPassword = !mostrarPassword"
+                :title="mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              >
+                <svg v-if="!mostrarPassword" viewBox="0 0 24 24" fill="none" width="20" height="20">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" width="20" height="20">
+                  <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <button
@@ -294,6 +311,34 @@ async function iniciarSesion() {
 
 .field-group input:focus {
   border-color: #042D29;
+}
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 44px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 8px;
+  color: #929079;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+  color: #042D29;
 }
 
 .mensaje-error {

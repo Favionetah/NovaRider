@@ -1,12 +1,14 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUsuariosStore } from '@/stores/usuarios'
+import { useToastStore } from '@/stores/toast'
 import UsuarioFormModal from './UsuarioFormModal.vue'
 import ConfirmarEliminacion from './ConfirmarEliminacion.vue'
 
 const router = useRouter()
 const store = useUsuariosStore()
+const toast = useToastStore()
 
 const tabActivo = ref('activos')
 const busqueda = ref('')
@@ -24,7 +26,7 @@ async function cargarStats() {
 }
 
 onMounted(async () => {
-  await Promise.all([store.listar(), store.listarInactivos()])
+  await Promise.all([store.listar(), store.listarInactivos(), store.obtenerRoles()])
   await cargarStats()
   await nextTick()
   animarEntrada()
@@ -41,7 +43,7 @@ function animarEntrada() {
   gsap.fromTo('.page-header', { y: -15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out' })
   gsap.fromTo('.stats-grid', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.08 })
   gsap.fromTo('.tabla-wrapper', { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.15 })
-  gsap.fromTo('.tabla-usuarios tbody tr', { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
+  gsap.from('.tabla-usuarios tbody tr', { y: 10, opacity: 0, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
 }
 
 function irADetalle(id) {
@@ -104,6 +106,7 @@ function confirmarEliminar(usuario) {
 
 async function eliminarUsuario() {
   await store.eliminar(usuarioEliminar.value.id_usuario)
+  toast.show('Usuario desactivado correctamente', 'success')
   mostrarConfirmacion.value = false
   usuarioEliminar.value = null
 }
@@ -115,6 +118,7 @@ function cancelarEliminar() {
 
 async function reactivarUsuario(id) {
   await store.reactivar(id)
+  toast.show('Usuario reactivado correctamente', 'success')
 }
 
 function exportarPdf() {
@@ -256,7 +260,7 @@ function exportarPdf() {
                 <span class="emp-cargo">{{ u.cargo }}</span>
               </td>
               <td class="col-user">{{ u.username }}</td>
-              <td class="col-ci">{{ u.ci || '—' }}</td>
+              <td class="col-ci">{{ u.ci || 'â€”' }}</td>
               <td class="col-rol">
                 <div class="roles-wrap">
                   <span
@@ -296,7 +300,7 @@ function exportarPdf() {
                 <span class="emp-cargo">{{ u.cargo }}</span>
               </td>
               <td class="col-user">{{ u.username }}</td>
-              <td class="col-ci">{{ u.ci || '—' }}</td>
+              <td class="col-ci">{{ u.ci || 'â€”' }}</td>
               <td class="col-rol">
                 <span class="badge-rol inactivo">Inactivo</span>
               </td>
@@ -325,6 +329,7 @@ function exportarPdf() {
       :usuario="usuarioEditando"
       :roles="store.roles"
       @cerrar="cerrarFormulario"
+      @guardado="(tipo) => toast.show(tipo === 'creado' ? 'Usuario creado correctamente' : 'Usuario actualizado correctamente', 'success')"
     />
 
     <ConfirmarEliminacion
@@ -391,7 +396,7 @@ function exportarPdf() {
   margin-bottom: 16px;
 }
 
-/* ── Card ── */
+/* â”€â”€ Card â”€â”€ */
 .content-card {
   background: #FFFFFF;
   border-radius: 16px;
@@ -401,7 +406,7 @@ function exportarPdf() {
   border-image: linear-gradient(90deg, #042D29, #741102) 1;
 }
 
-/* ── Tabs ── */
+/* â”€â”€ Tabs â”€â”€ */
 .tabs {
   display: flex;
   border-bottom: 1px solid #E5E7EB;
@@ -457,7 +462,7 @@ function exportarPdf() {
   color: #929079;
 }
 
-/* ── Toolbar ── */
+/* â”€â”€ Toolbar â”€â”€ */
 .toolbar {
   display: flex;
   gap: 12px;
@@ -550,7 +555,7 @@ function exportarPdf() {
   height: 18px;
 }
 
-/* ── Loading ── */
+/* â”€â”€ Loading â”€â”€ */
 .cargando {
   text-align: center;
   color: #929079;
@@ -558,7 +563,7 @@ function exportarPdf() {
   font-size: 14px;
 }
 
-/* ── Table ── */
+/* â”€â”€ Table â”€â”€ */
 .tabla-wrapper {
   overflow-x: auto;
 }
@@ -640,7 +645,7 @@ function exportarPdf() {
   gap: 4px;
 }
 
-/* ── Action buttons ── */
+/* â”€â”€ Action buttons â”€â”€ */
 .col-acc {
   display: flex;
   gap: 6px;
@@ -759,8 +764,7 @@ function exportarPdf() {
   color: #741102;
 }
 
-.page-header, .stats-grid, .tabla-wrapper,
-.tabla-usuarios tbody tr {
+.page-header, .stats-grid, .tabla-wrapper {
   opacity: 0;
 }
 
@@ -771,3 +775,6 @@ function exportarPdf() {
   font-size: 14px;
 }
 </style>
+
+
+
