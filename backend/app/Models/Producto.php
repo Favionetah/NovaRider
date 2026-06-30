@@ -15,7 +15,10 @@ class Producto extends Model
         'nombre',
         'descripcion',
         'precio_venta',
+<<<<<<< HEAD
+=======
         'costo',
+>>>>>>> respaldo-caja
         'stock_fisico',
         'stock_disponible',
         'stock_minimo',
@@ -28,6 +31,8 @@ class Producto extends Model
         'estadoA' => 'boolean',
         'fechahoraA' => 'datetime',
     ];
+<<<<<<< HEAD
+=======
 
     public function ubicacion()
     {
@@ -39,4 +44,5 @@ class Producto extends Model
         return $this->belongsToMany(ModelosCompatible::class, 'TProductosModelosCompatibles', 'id_producto', 'id_modelo')
             ->withPivot('estadoA', 'usuarioA', 'fechahoraA');
     }
+>>>>>>> respaldo-caja
 }

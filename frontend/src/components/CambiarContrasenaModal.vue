@@ -48,6 +48,10 @@ async function guardar() {
     passwordActual.value = ''
     nuevaPassword.value = ''
     confirmarPassword.value = ''
+<<<<<<< HEAD
+    setTimeout(() => cerrar(), 1500)
+=======
+>>>>>>> respaldo-caja
   } catch (err) {
     error.value = err.response?.data?.message || 'Error al cambiar la contraseña'
   } finally {
@@ -66,6 +70,9 @@ async function guardar() {
 
       <form class="modal-body" @submit.prevent="guardar">
         <div v-if="error" class="form-error">{{ error }}</div>
+<<<<<<< HEAD
+        <div v-if="success" class="form-success">Contrase&ntilde;a actualizada exitosamente</div>
+=======
         <div v-if="success" class="form-success">
           <svg viewBox="0 0 24 24" fill="none" class="success-icon" width="24" height="24">
             <circle cx="12" cy="12" r="10" stroke="#2F855A" stroke-width="2"/>
@@ -73,6 +80,7 @@ async function guardar() {
           </svg>
           <span>Contrase&ntilde;a actualizada exitosamente</span>
         </div>
+>>>>>>> respaldo-caja
 
         <div class="form-group">
           <label class="form-label">Contrase&ntilde;a actual</label>
@@ -105,8 +113,13 @@ async function guardar() {
         </div>
 
         <div class="modal-actions">
+<<<<<<< HEAD
+          <button type="button" class="btn-cancelar" @click="cerrar">Cancelar</button>
+          <button type="submit" class="btn-guardar" :disabled="loading">
+=======
           <button type="button" class="btn-cancelar" @click="cerrar">{{ success ? 'Cerrar' : 'Cancelar' }}</button>
           <button v-if="!success" type="submit" class="btn-guardar" :disabled="loading">
+>>>>>>> respaldo-caja
             {{ loading ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
@@ -180,6 +193,14 @@ async function guardar() {
 }
 
 .form-success {
+<<<<<<< HEAD
+  background: #F0FFF4;
+  border-left: 3px solid #2F855A;
+  color: #2F855A;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+=======
   display: flex;
   align-items: center;
   gap: 10px;
@@ -190,14 +211,18 @@ async function guardar() {
   border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
+>>>>>>> respaldo-caja
   margin-bottom: 16px;
   animation: slideDown 0.25s ease;
 }
 
+<<<<<<< HEAD
+=======
 .success-icon {
   flex-shrink: 0;
 }
 
+>>>>>>> respaldo-caja
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }

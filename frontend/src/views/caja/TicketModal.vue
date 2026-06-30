@@ -1,250 +1,111 @@
-<script setup>
-defineProps({
-  show: { type: Boolean, default: false },
-  datosTicket: { type: Object, default: null },
-})
-
-const emit = defineEmits(['onClose'])
-</script>
-
 <template>
-  <Teleport to="body">
-    <div v-if="show" class="modal-overlay" @click.self="emit('onClose')">
-      <div class="modal-card">
-        <div class="modal-header">
-          <div class="header-left">
-            <svg viewBox="0 0 24 24" fill="none" width="22" height="22">
-              <path d="M20 12V6H4v6M20 12v6H4v-6M20 12h2M2 12h2" stroke="#042D29" stroke-width="2"/>
-              <rect x="6" y="10" width="12" height="6" rx="1" fill="#042D29" fill-opacity="0.1" stroke="#042D29" stroke-width="1"/>
-            </svg>
-            <h2>Comprobante de Venta</h2>
+  <div v-if="show" class="modal-backdrop-custom d-flex align-items-center justify-content-center">
+    <div class="ticket-container bg-white p-4 shadow-lg rounded-3 border border-light-subtle">
+      <!-- Icono de Estado Exitoso -->
+      <div class="text-center mb-4">
+        <div class="success-icon-circle mx-auto mb-2 bg-neutral text-dark d-flex align-items-center justify-content-center rounded-circle">
+          <i class="bi bi-check-circle-fill fs-4"></i>
+        </div>
+        <h6 class="fw-semibold text-dark mb-0 tracking-tight">Transacción Exitosa</h6>
+        <p class="text-muted small mb-0" style="font-size: 0.72rem;">El comprobante ha sido indexado en el servidor</p>
+      </div>
+
+      <!-- Tarjeta de Datos Estilizada -->
+      <div class="bg-neutral rounded-3 p-3 mb-4 border border-light-subtle">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-light-subtle">
+          <div>
+            <span class="fw-bold text-dark font-monospace tracking-wider block" style="font-size: 0.75rem;">NOVARIDER TALLER</span>
+            <span class="text-muted d-block font-monospace" style="font-size: 0.65rem;">Recibo ID: #{{ datosTicket?.nroRecibo }}</span>
           </div>
-          <button class="close-btn" @click="emit('onClose')">
-            <svg viewBox="0 0 24 24" fill="none" width="20" height="20">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <i class="bi bi-qr-code-scan fs-4 text-secondary"></i>
+        </div>
+
+        <div class="row g-2 mb-3 text-secondary" style="font-size: 0.75rem;">
+          <div class="col-4 fw-medium text-muted">Cliente:</div>
+          <div class="col-8 text-dark fw-medium text-end">{{ datosTicket?.cliente }}</div>
+          
+          <div class="col-4 fw-medium text-muted">Vehículo:</div>
+          <div class="col-8 text-dark font-monospace text-end text-uppercase">{{ datosTicket?.placa }}</div>
+          
+          <div class="col-4 fw-medium text-muted">Trabajo:</div>
+          <div class="col-8 text-dark text-end text-truncate" :title="datosTicket?.concepto">{{ datosTicket?.concepto }}</div>
+        </div>
+
+        <!-- Tabla Limpia de Productos -->
+        <div class="table-responsive">
+          <table class="table table-sm table-borderless align-middle mb-0" style="font-size: 0.75rem;">
+<thead>
+    <tr>
+        <th colspan="2" class="text-center pb-2">
+            <span class="fw-bold text-dark font-monospace tracking-wider block" style="font-size: 0.75rem;">NOVARIDER TALLER</span>
+        </th>
+    </tr>
+    <tr>
+        <th class="ps-0 pb-1" data-v-inspector="src/views/caja/TicketModal.vue:38:136">Detalle del ítem</th>
+        <th class="text-end pe-0 pb-1" style="width: 70px;">Total</th>
+    </tr>
+</thead>
+            <tbody>
+              <tr v-for="item in datosTicket?.items" :key="item.id" class="border-bottom-dashed">
+                <td class="ps-0 py-2 text-dark fw-medium">{{ item.nombreItem }}</td>
+                <td class="text-end pe-0 font-monospace text-secondary">{{ item.precioItem.toFixed(1) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Fila de Importe Neto -->
+        <div class="pt-3 mt-1 d-flex justify-content-between align-items-center fw-semibold text-dark">
+          <span style="font-size: 0.8rem;">Total Liquidado</span>
+          <span class="font-monospace fs-5 fw-bold text-dark">{{ datosTicket?.total?.toFixed(1) }} Bs.</span>
+        </div>
+        <div class="text-muted mt-1 text-end font-monospace" style="font-size: 0.62rem;">
+          Vía: {{ datosTicket?.metodo_pago }}
+        </div>
+      </div>
+
+      <!-- Acciones Inferiores Modernas -->
+      <div class="row g-2">
+        <div class="col-6">
+          <button class="btn btn-outline-dark btn-sm w-100 fw-medium py-2 rounded-2 d-flex align-items-center justify-content-center gap-1.5" @click="imprimirRecibo">
+            <i class="bi bi-printer"></i> Imprimir
           </button>
         </div>
-
-        <div v-if="datosTicket" class="modal-body">
-          <div class="ticket-header-info">
-            <div class="ticket-field">
-              <span class="ticket-label">N&deg; Recibo</span>
-              <span class="ticket-value">#{{ datosTicket.nroRecibo }}</span>
-            </div>
-            <div class="ticket-field">
-              <span class="ticket-label">Cliente</span>
-              <span class="ticket-value">{{ datosTicket.cliente || 'Cliente General' }}</span>
-            </div>
-            <div class="ticket-field">
-              <span class="ticket-label">Placa</span>
-              <span class="ticket-value">{{ datosTicket.placa || 'S/P' }}</span>
-            </div>
-            <div class="ticket-field">
-              <span class="ticket-label">M&eacute;todo de Pago</span>
-              <span class="ticket-value">{{ datosTicket.metodo_pago || 'Efectivo' }}</span>
-            </div>
-          </div>
-
-          <div class="ticket-items-header">Detalle</div>
-          <div class="ticket-items">
-            <div v-for="(item, idx) in datosTicket.items" :key="idx" class="ticket-item">
-              <span class="item-nombre">{{ item.nombreItem }}</span>
-              <span class="item-precio">S/ {{ parseFloat(item.precioItem).toFixed(2) }}</span>
-            </div>
-          </div>
-
-          <div class="ticket-total-row">
-            <span class="ticket-total-label">Total</span>
-            <span class="ticket-total-valor">S/ {{ parseFloat(datosTicket.total).toFixed(2) }}</span>
-          </div>
-
-          <p class="ticket-footer-text">Gracias por su preferencia</p>
-        </div>
-
-        <div class="modal-footer">
-          <button class="btn-primario w-100" @click="emit('onClose')">Cerrar</button>
+        <div class="col-6">
+          <button class="btn btn-dark btn-sm w-100 fw-medium py-2 rounded-2" @click="cerrarModal">Terminar</button>
         </div>
       </div>
     </div>
-  </Teleport>
+  </div>
 </template>
 
+<script setup>
+const props = defineProps({
+  show: { type: Boolean, default: false },
+  datosTicket: { type: Object, default: null }
+})
+const emit = defineEmits(['onClose'])
+const cerrarModal = () => emit('onClose')
+const imprimirRecibo = () => { window.print() }
+</script>
+
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 300;
-  padding: 20px;
+.modal-backdrop-custom {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background-color: rgba(0, 0, 0, 0.12); z-index: 2000; backdrop-filter: blur(4px);
 }
-
-.modal-card {
-  background: #FFFFFF;
-  border-radius: 14px;
-  width: 100%;
-  max-width: 480px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  max-height: 90vh;
-  overflow-y: auto;
+.ticket-container {
+  width: 360px;
+  animation: modalSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #E5E7EB;
+.success-icon-circle {
+  width: 48px; height: 48px;
 }
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.border-bottom-dashed {
+  border-bottom: 1px dashed rgba(0,0,0,0.06);
 }
-
-.modal-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #042D29;
-  margin: 0;
+@keyframes modalSlideIn {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
-
-.close-btn {
-  background: none;
-  border: none;
-  color: #929079;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  transition: background 0.2s ease;
-}
-
-.close-btn:hover { background: #F5F4F0; color: #1F2937; }
-
-.modal-body {
-  padding: 24px;
-}
-
-.ticket-header-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.ticket-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ticket-label {
-  font-size: 11px;
-  color: #929079;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  font-weight: 500;
-}
-
-.ticket-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1F2937;
-}
-
-.ticket-items-header {
-  font-size: 12px;
-  font-weight: 600;
-  color: #929079;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #E5E7EB;
-  margin-bottom: 8px;
-}
-
-.ticket-items {
-  display: flex;
-  flex-direction: column;
-}
-
-.ticket-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #F3F4F6;
-}
-
-.ticket-item:last-child { border-bottom: none; }
-
-.item-nombre {
-  font-size: 13px;
-  color: #1F2937;
-}
-
-.item-precio {
-  font-size: 13px;
-  font-weight: 600;
-  color: #042D29;
-  font-family: 'Inter', monospace;
-}
-
-.ticket-total-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 0;
-  margin-top: 8px;
-  border-top: 2px solid #042D29;
-}
-
-.ticket-total-label {
-  font-size: 16px;
-  font-weight: 600;
-  color: #042D29;
-}
-
-.ticket-total-valor {
-  font-size: 22px;
-  font-weight: 700;
-  color: #042D29;
-  font-family: 'Inter', monospace;
-}
-
-.ticket-footer-text {
-  text-align: center;
-  font-size: 12px;
-  color: #929079;
-  font-style: italic;
-  margin: 16px 0 0;
-}
-
-.modal-footer {
-  padding: 0 24px 20px;
-}
-
-.btn-primario {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: #042D29;
-  color: #FFFFFF;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-primario:hover { background: #052E2A; }
-.w-100 { width: 100%; }
 </style>

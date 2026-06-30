@@ -4,9 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Empleado;
 use App\Models\Rol;
+<<<<<<< HEAD
+use App\Models\User;
+use App\Traits\AuditoriaTrait;
+=======
 use App\Models\User; // 🚀 Tu modelo se llama User
 use App\Traits\AuditoriaTrait;
 use Barryvdh\DomPDF\Facade\Pdf;
+>>>>>>> respaldo-caja
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -46,11 +51,19 @@ class UsuarioController extends Controller
     {
         $validated = $request->validate([
             'ci' => 'required|string|min:5|max:9|regex:/^\d+$/|unique:TEmpleados,ci',
+<<<<<<< HEAD
+            'primer_nombre' => 'required|string|min:2|max:255',
+            'segundo_nombre' => 'nullable|string|max:255',
+            'apellido_paterno' => 'required|string|min:2|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'fecha_nacimiento' => 'nullable|date|before:today',
+=======
             'primer_nombre' => 'required|string|min:2|max:255|regex:/^[\pL\s]+$/u',
             'segundo_nombre' => 'nullable|string|max:255|regex:/^[\pL\s]*$/u',
             'apellido_paterno' => 'required|string|min:2|max:255|regex:/^[\pL\s]+$/u',
             'apellido_materno' => 'nullable|string|max:255|regex:/^[\pL\s]*$/u',
             'fecha_nacimiento' => 'required|date|before:today|before:-18 years',
+>>>>>>> respaldo-caja
             'telefono' => 'nullable|string|regex:/^\d{8}$/',
             'cargo' => 'required|string|min:2|max:255',
             'sueldo_base' => 'nullable|numeric|min:0',
@@ -63,6 +76,10 @@ class UsuarioController extends Controller
             'ci.unique' => 'Esta cédula de identidad ya está registrada',
             'ci.min' => 'La cédula debe tener al menos 5 dígitos',
             'ci.max' => 'La cédula debe tener máximo 9 dígitos',
+<<<<<<< HEAD
+            'telefono.regex' => 'El teléfono debe tener 8 dígitos',
+            'fecha_nacimiento.before' => 'La fecha de nacimiento no puede ser futura',
+=======
             'telefono.regex' => 'El teléfono debe tener 8 dígitos y comenzar con 6 o 7',
             'primer_nombre.regex' => 'El primer nombre solo puede contener letras, espacios y acentos',
             'segundo_nombre.regex' => 'El segundo nombre solo puede contener letras, espacios y acentos',
@@ -74,6 +91,7 @@ class UsuarioController extends Controller
             'apellido_paterno.required' => 'El apellido paterno es requerido',
             'cargo.required' => 'El cargo es requerido',
             'password.required' => 'La contraseña es requerida',
+>>>>>>> respaldo-caja
             'primer_nombre.min' => 'El primer nombre debe tener al menos 2 caracteres',
             'apellido_paterno.min' => 'El apellido paterno debe tener al menos 2 caracteres',
             'cargo.min' => 'El cargo debe tener al menos 2 caracteres',
@@ -151,11 +169,19 @@ class UsuarioController extends Controller
 
         $validated = $request->validate([
             'ci' => 'sometimes|string|min:5|max:9|regex:/^\d+$/|unique:TEmpleados,ci,' . $empleadoId . ',id_empleado',
+<<<<<<< HEAD
+            'primer_nombre' => 'sometimes|string|min:2|max:255',
+            'segundo_nombre' => 'nullable|string|max:255',
+            'apellido_paterno' => 'sometimes|string|min:2|max:255',
+            'apellido_materno' => 'nullable|string|max:255',
+            'fecha_nacimiento' => 'nullable|date|before:today',
+=======
             'primer_nombre' => 'sometimes|string|min:2|max:255|regex:/^[\pL\s]+$/u',
             'segundo_nombre' => 'nullable|string|max:255|regex:/^[\pL\s]*$/u',
             'apellido_paterno' => 'sometimes|string|min:2|max:255|regex:/^[\pL\s]+$/u',
             'apellido_materno' => 'nullable|string|max:255|regex:/^[\pL\s]*$/u',
             'fecha_nacimiento' => 'nullable|date|before:today|before:-18 years',
+>>>>>>> respaldo-caja
             'telefono' => 'nullable|string|regex:/^\d{8}$/',
             'cargo' => 'sometimes|string|min:2|max:255',
             'username' => 'sometimes|string|min:3|max:255|unique:TUsuarios,username,' . $id . ',id_usuario',
@@ -168,6 +194,10 @@ class UsuarioController extends Controller
             'ci.unique' => 'Esta cédula de identidad ya está registrada',
             'ci.min' => 'La cédula debe tener al menos 5 dígitos',
             'ci.max' => 'La cédula debe tener máximo 9 dígitos',
+<<<<<<< HEAD
+            'telefono.regex' => 'El teléfono debe tener 8 dígitos',
+            'fecha_nacimiento.before' => 'La fecha de nacimiento no puede ser futura',
+=======
             'telefono.regex' => 'El teléfono debe tener 8 dígitos y comenzar con 6 o 7',
             'primer_nombre.regex' => 'El primer nombre solo puede contener letras, espacios y acentos',
             'segundo_nombre.regex' => 'El segundo nombre solo puede contener letras, espacios y acentos',
@@ -177,6 +207,7 @@ class UsuarioController extends Controller
             'primer_nombre.required' => 'El primer nombre es requerido',
             'apellido_paterno.required' => 'El apellido paterno es requerido',
             'cargo.required' => 'El cargo es requerido',
+>>>>>>> respaldo-caja
             'primer_nombre.min' => 'El primer nombre debe tener al menos 2 caracteres',
             'apellido_paterno.min' => 'El apellido paterno debe tener al menos 2 caracteres',
             'cargo.min' => 'El cargo debe tener al menos 2 caracteres',
@@ -324,6 +355,8 @@ class UsuarioController extends Controller
         return response()->json(['roles' => $roles]);
     }
 
+<<<<<<< HEAD
+=======
     // 📦 Cambio de tu compañero integrado (Reporte PDF)
     public function reportePdf(Request $request)
     {
@@ -415,6 +448,7 @@ class UsuarioController extends Controller
         return response()->json($mecanicos);
     }
 
+>>>>>>> respaldo-caja
     private function formatearUsuario(User $user)
     {
         $empleado = $user->empleado;
@@ -452,4 +486,8 @@ class UsuarioController extends Controller
             'estadoA' => $user->estadoA,
         ];
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> respaldo-caja

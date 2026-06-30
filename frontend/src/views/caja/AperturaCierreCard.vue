@@ -1,274 +1,70 @@
-<script setup>
-import { ref } from 'vue'
-
-const props = defineProps({
-  saldoSistema: { type: Number, default: 0 },
-  cajaAbierta: { type: Boolean, default: false },
-  logsServidor: { type: String, default: '' },
-})
-
-const emit = defineEmits(['onCerrarCaja'])
-
-const mostrarFormCierre = ref(false)
-const montoFisico = ref(0)
-const observaciones = ref('')
-
-function abrirFormCierre() {
-  montoFisico.value = props.saldoSistema
-  observaciones.value = ''
-  mostrarFormCierre.value = true
-}
-
-function confirmarCierre() {
-  emit('onCerrarCaja', {
-    fisico: montoFisico.value,
-    observaciones: observaciones.value,
-  })
-  mostrarFormCierre.value = false
-}
-</script>
-
 <template>
-  <div class="card-seccion">
-    <div class="card-seccion-header">
-      <div class="header-row">
-        <svg viewBox="0 0 24 24" fill="none" width="20" height="20" class="header-icon">
-          <rect x="2" y="4" width="20" height="16" rx="2" stroke="#042D29" stroke-width="2"/>
-          <path d="M12 10v4M10 12h4" stroke="#042D29" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <h3>Jornada</h3>
-        <span class="status-dot" :class="{ activa: cajaAbierta }"></span>
+  <div class="d-flex flex-column gap-3">
+    <div class="card border-0 shadow-sm bg-white rounded-3">
+      <div class="card-body p-3">
+        <h6 class="fw-semibold text-dark mb-3 tracking-tight">Flujo de Caja</h6>
+        
+        <div v-if="!cajaAbierta">
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-medium mb-1">Monto Inicial (Bs.)</label>
+            <input type="number" class="form-control form-control-sm text-center fw-semibold py-2 bg-light border-0" v-model.number="montoInicial" placeholder="0.00" />
+          </div>
+          <button class="btn btn-dark btn-sm w-100 fw-medium py-2 rounded-2" @click="emitirApertura">Abrir Jornada</button>
+        </div>
+
+        <div v-else>
+          <div class="bg-light p-2 rounded-2 mb-3 d-flex justify-content-between align-items-center">
+            <span class="text-muted small fw-medium">En Sistema:</span>
+            <span class="fw-bold text-dark font-monospace" style="font-size: 0.95rem;">{{ saldoSistema }} Bs.</span>
+          </div>
+          
+          <div class="mb-2">
+            <label class="form-label text-muted small fw-medium mb-1">Físico Real (Bs.)</label>
+            <input type="number" class="form-control form-control-sm py-2 bg-light border-0" v-model.number="cierreDatos.fisico" placeholder="0.00" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-medium mb-1">Notas de Arqueo</label>
+            <textarea class="form-control form-control-sm py-1 bg-light border-0 small" rows="2" v-model="cierreDatos.observaciones" placeholder="Novedades o justificaciones..."></textarea>
+          </div>
+
+          <button class="btn btn-outline-danger btn-sm w-100 fw-medium py-2 rounded-2" @click="emitirCierre">Cerrar Caja e Informar</button>
+        </div>
       </div>
-      <p class="texto-ayuda">{{ cajaAbierta ? 'Jornada en curso' : 'Caja cerrada' }}</p>
     </div>
 
-    <div class="card-seccion-body">
-      <div class="saldo-row">
-        <span class="saldo-label">Saldo en sistema</span>
-        <span class="saldo-valor">S/ {{ saldoSistema.toFixed(2) }}</span>
-      </div>
-
-      <div v-if="!cajaAbierta" class="empty-state">
-        Inicie la jornada desde el panel principal.
-      </div>
-
-      <div v-if="cajaAbierta && !mostrarFormCierre" class="cierre-actions">
-        <button class="btn-secundario w-100" @click="abrirFormCierre">
-          <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
-            <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
-            <path d="M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          Cerrar Jornada
-        </button>
-      </div>
-
-      <div v-if="cajaAbierta && mostrarFormCierre" class="cierre-form">
-        <div class="form-group">
-          <label>Monto f&iacute;sico contado (S/)</label>
-          <input v-model.number="montoFisico" type="number" step="0.01" min="0" />
+    <div class="card border-0 bg-dark text-white rounded-3" style="opacity: 0.9;">
+      <div class="card-body p-3" style="font-size: 0.72rem;">
+        <div class="d-flex align-items-center gap-1.5 text-white-50 fw-semibold text-uppercase tracking-wider mb-1.5" style="font-size: 0.65rem;">
+          <span class="d-inline-block rounded-circle bg-success" style="width: 5px; height: 5px;"></span> Terminal Status
         </div>
-        <div class="form-group">
-          <label>Observaciones</label>
-          <textarea v-model="observaciones" rows="2" placeholder="Notas del arqueo..."></textarea>
-        </div>
-        <div class="form-actions">
-          <button class="btn-ghost" @click="mostrarFormCierre = false">Cancelar</button>
-          <button class="btn-primario" @click="confirmarCierre">
-            Confirmar Cierre
-          </button>
-        </div>
+        <p class="font-monospace text-light mb-0 lh-base">> {{ logsServidor }}</p>
       </div>
-
-      <p v-if="logsServidor" class="status-text">{{ logsServidor }}</p>
     </div>
   </div>
 </template>
 
-<style scoped>
-.card-seccion {
-  background: #FFFFFF;
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  overflow: hidden;
-  border-top: 4px solid transparent;
-  border-image: linear-gradient(90deg, #042D29 0%, #741102 100%) 1;
+<script setup>
+import { ref } from 'vue'
+
+defineProps({
+  saldoSistema: { type: Number, default: 0 },
+  cajaAbierta: { type: Boolean, default: false },
+  logsServidor: { type: String, default: '' }
+})
+
+const emit = defineEmits(['onAbrirCaja', 'onCerrarCaja'])
+const montoInicial = ref(200)
+const cierreDatos = ref({ fisico: 0, observaciones: '' })
+
+const emitirApertura = () => {
+  if (montoInicial.value < 0) return
+  emit('onAbrirCaja', montoInicial.value)
 }
 
-.card-seccion-header {
-  padding: 20px 24px 12px;
+const emitirCierre = () => {
+  if (cierreDatos.value.fisico < 0) return
+  emit('onCerrarCaja', { ...cierreDatos.value })
+  cierreDatos.value = { fisico: 0, observaciones: '' }
 }
-
-.header-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.header-icon { flex-shrink: 0; }
-
-.card-seccion-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #042D29;
-  margin: 0;
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #929079;
-  transition: background 0.3s;
-}
-
-.status-dot.activa { background: #22C55E; }
-
-.texto-ayuda {
-  font-size: 13px;
-  color: #929079;
-  margin: 4px 0 0;
-}
-
-.card-seccion-body {
-  padding: 12px 24px 24px;
-}
-
-.saldo-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 16px;
-  background: #F0F4F3;
-  border-radius: 10px;
-  margin-bottom: 16px;
-}
-
-.saldo-label {
-  font-size: 13px;
-  color: #1F2937;
-  font-weight: 500;
-}
-
-.saldo-valor {
-  font-size: 18px;
-  font-weight: 700;
-  color: #042D29;
-  font-family: 'Inter', monospace;
-}
-
-.empty-state {
-  text-align: center;
-  color: #929079;
-  padding: 20px 0;
-  font-size: 13px;
-  font-style: italic;
-}
-
-.cierre-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.btn-secundario {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: transparent;
-  color: #042D29;
-  border: 1.5px solid #042D29;
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-secundario:hover { background: #F0F4F3; }
-.w-100 { width: 100%; }
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-
-.form-group label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #1F2937;
-}
-
-.form-group input,
-.form-group textarea {
-  padding: 10px 12px;
-  border: 1.5px solid #D1D5DB;
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  color: #1F2937;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  background: #FFFFFF;
-  resize: vertical;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-  border-color: #042D29;
-  box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
-}
-
-.form-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-
-.btn-primario {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: #042D29;
-  color: #FFFFFF;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-primario:hover { background: #052E2A; }
-
-.btn-ghost {
-  padding: 10px 20px;
-  background: transparent;
-  color: #929079;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.btn-ghost:hover { background: #F5F4F0; }
-
-.status-text {
-  font-size: 10px;
-  color: #929079;
-  font-family: 'Inter', monospace;
-  margin-top: 12px;
-  text-align: center;
-}
-</style>
+</script>
