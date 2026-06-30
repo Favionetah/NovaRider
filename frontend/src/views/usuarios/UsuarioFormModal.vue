@@ -19,6 +19,17 @@ const mensajeError = ref('')
 const mostrarHorario = ref(false)
 const horarioGuardado = ref(false)
 const esAdmin = computed(() => auth.tieneRol(1))
+const hoy = new Date().toISOString().split('T')[0]
+
+const cargos = [
+  'Mecánico',
+  'Recepcionista',
+  'Recepcionista/Cajero',
+  'Cajero',
+  'Administrador',
+  'Limpieza',
+  'Seguridad',
+]
 
 function obtenerRolesUsuario() {
   if (!props.usuario?.roles) return []
@@ -114,6 +125,9 @@ function validar() {
     if (edad < 18) {
       errores.value.fecha_nacimiento = 'Debe ser mayor de 18 años'
       ok = false
+    } else if (new Date(form.value.fecha_nacimiento) > new Date(hoy)) {
+      errores.value.fecha_nacimiento = 'La fecha de nacimiento no puede ser futura'
+      ok = false
     } else if (edad > 100) {
       errores.value.fecha_nacimiento = 'Fecha de nacimiento no válida'
       ok = false
@@ -128,8 +142,8 @@ function validar() {
   if (!form.value.cargo) {
     errores.value.cargo = 'El cargo es requerido'
     ok = false
-  } else if (form.value.cargo.length < 2) {
-    errores.value.cargo = 'Mínimo 2 caracteres'
+  } else if (!cargos.includes(form.value.cargo)) {
+    errores.value.cargo = 'Seleccione un cargo válido'
     ok = false
   }
 
@@ -228,7 +242,7 @@ async function guardar() {
             </div>
             <div class="campo" :class="{ 'has-error': errores.fecha_nacimiento }">
               <label for="fecha_nacimiento">Fecha de Nacimiento</label>
-              <input id="fecha_nacimiento" v-model="form.fecha_nacimiento" type="date" />
+              <input id="fecha_nacimiento" v-model="form.fecha_nacimiento" type="date" :max="hoy" />
               <p v-if="errores.fecha_nacimiento" class="field-error">{{ errores.fecha_nacimiento }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.telefono }">
@@ -238,7 +252,10 @@ async function guardar() {
             </div>
             <div class="campo" :class="{ 'has-error': errores.cargo }">
               <label for="cargo">Cargo</label>
-              <input id="cargo" v-model="form.cargo" type="text" placeholder="Ej: Mecánico" required />
+              <select id="cargo" v-model="form.cargo" required>
+                <option value="" disabled>Seleccionar cargo...</option>
+                <option v-for="c in cargos" :key="c" :value="c">{{ c }}</option>
+              </select>
               <p v-if="errores.cargo" class="field-error">{{ errores.cargo }}</p>
             </div>
             <div v-if="esAdmin" class="campo">

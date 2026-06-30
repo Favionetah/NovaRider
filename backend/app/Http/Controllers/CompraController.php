@@ -6,10 +6,7 @@ use App\Models\Compra;
 use App\Models\DetalleCompra;
 use App\Models\Producto;
 use App\Traits\AuditoriaTrait;
-<<<<<<< HEAD
-=======
 use Barryvdh\DomPDF\Facade\Pdf;
->>>>>>> respaldo-caja
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -115,8 +112,6 @@ class CompraController extends Controller
         }
     }
 
-<<<<<<< HEAD
-=======
     public function reportePdf(Request $request)
     {
         $busqueda = $request->input('busqueda', '');
@@ -188,7 +183,6 @@ class CompraController extends Controller
         return $pdf->download($filename);
     }
 
->>>>>>> respaldo-caja
     private function formatearCompra(Compra $compra)
     {
         return [

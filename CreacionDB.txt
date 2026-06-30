@@ -240,10 +240,7 @@ CREATE TABLE TProductos (
     nombre VARCHAR(255) NOT NULL,
     descripcion TEXT,
     precio_venta DECIMAL,
-<<<<<<< HEAD
-=======
     costo DECIMAL(11,2) DEFAULT 0,
->>>>>>> respaldo-caja
     stock_fisico INT,
     stock_disponible INT,
     stock_minimo INT,
@@ -390,11 +387,8 @@ CREATE TABLE TDetallesVenta (
 CREATE TABLE TReservas (
     id_reserva INT PRIMARY KEY AUTO_INCREMENT,
     id_cliente INT,
-<<<<<<< HEAD
-=======
     monto_adelanto DECIMAL(11,2) DEFAULT 0,
     adelanto_metodo_pago ENUM('QR','Efectivo'),
->>>>>>> respaldo-caja
     fecha_solicitud DATE,
     fecha_expiracion DATE,
     estado VARCHAR(255),

@@ -138,28 +138,17 @@ class AuthController extends Controller
         $modulos = [
             [
                 'id' => 'usuarios',
-<<<<<<< HEAD
-                'nombre' => 'Gesti&oacute;n de Personal',
-                'descripcion' => 'Usuarios, turnos, planillas y sueldos',
-                'ruta' => '/usuarios',
-                'color' => '#741102',
-=======
                 'nombre' => 'Gestión de Personal',
                 'descripcion' => 'Usuarios, turnos, planillas y sueldos',
                 'ruta' => '/usuarios',
                 'color' => '#042D29',
->>>>>>> respaldo-caja
                 'roles_permitidos' => [1],
             ],
             [
                 'id' => 'clientes',
                 'nombre' => 'Clientes y Vehículos',
                 'descripcion' => 'Registro de clientes y motocicletas',
-<<<<<<< HEAD
-                'ruta' => null,
-=======
                 'ruta' => '/clientes',
->>>>>>> respaldo-caja
                 'color' => '#042D29',
                 'roles_permitidos' => [1, 3, 4],
             ],
@@ -175,36 +164,22 @@ class AuthController extends Controller
                 'id' => 'inventario',
                 'nombre' => 'Inventario',
                 'descripcion' => 'Productos, repuestos y stock',
-<<<<<<< HEAD
-                'ruta' => null,
-                'color' => '#042D29',
-                'roles_permitidos' => [1, 2],
-=======
                 'ruta' => '/inventario',
                 'color' => '#042D29',
                 'roles_permitidos' => [1, 2, 5],
->>>>>>> respaldo-caja
             ],
             [
                 'id' => 'ventas',
                 'nombre' => 'Ventas y Caja',
                 'descripcion' => 'Registro de ventas y arqueo de caja',
-<<<<<<< HEAD
-                'ruta' => null,
-=======
                 'ruta' => '/caja',
->>>>>>> respaldo-caja
                 'color' => '#042D29',
                 'roles_permitidos' => [1, 2],
             ],
             [
                 'id' => 'compras',
                 'nombre' => 'Compras',
-<<<<<<< HEAD
-                'descripcion' => 'Registro de compras y administraci&oacute;n de proveedores',
-=======
                 'descripcion' => 'Gestión de compras y administración de proveedores',
->>>>>>> respaldo-caja
                 'ruta' => '/compras',
                 'color' => '#042D29',
                 'roles_permitidos' => [1],
@@ -217,8 +192,6 @@ class AuthController extends Controller
                 'color' => '#042D29',
                 'roles_permitidos' => [1, 3],
             ],
-<<<<<<< HEAD
-=======
             [
                 'id' => 'reservas',
                 'nombre' => 'Reservas y Envíos',
@@ -227,7 +200,6 @@ class AuthController extends Controller
                 'color' => '#042D29',
                 'roles_permitidos' => [1, 3, 4],
             ],
->>>>>>> respaldo-caja
         ];
 
         $usuario['modulos'] = array_values(array_filter($modulos, function ($m) use ($rolesIds) {
