@@ -68,6 +68,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reportes/pdf', [ReporteController::class, 'exportPdf']);
 
         // --- Módulo Caja y Ventas ---
+        Route::get('/caja/estado', [CajaController::class, 'obtenerEstadoCaja']);
         Route::post('/caja/abrir', [CajaController::class, 'abrirCaja']);
         Route::post('/caja/ventas', [CajaController::class, 'crearRecibo']);
         Route::get('/caja/ventas', [CajaController::class, 'obtenerVentas']);

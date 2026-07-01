@@ -22,10 +22,6 @@ const diferenciaCaja = computed(() => {
   return montoFisico.value - props.saldoSistema
 })
 
-const seRequiereObservacion = computed(() => {
-  return diferenciaCaja.value !== 0 && !observaciones.value.trim()
-})
-
 function abrirFormCierre() {
   montoFisico.value = props.saldoSistema
   observaciones.value = ''
@@ -34,10 +30,6 @@ function abrirFormCierre() {
 
 function confirmarCierre() {
   if (!montoValido.value) return 
-  if (seRequiereObservacion.value) {
-    alert('Debe ingresar una observación explicando la diferencia en caja.')
-    return
-  }
   
   emit('onCerrarCaja', {
     fisico: montoFisico.value,
@@ -114,9 +106,7 @@ function confirmarCierre() {
             v-model="observaciones" 
             rows="2" 
             placeholder="Notas obligatorias si hay descuadres..."
-            :class="{ 'input-error': seRequiereObservacion }"
           ></textarea>
-          <span v-if="seRequiereObservacion" class="error-text">La observación es obligatoria cuando existe descuadre en caja.</span>
         </div>
 
         <div class="form-actions">
@@ -124,7 +114,7 @@ function confirmarCierre() {
           <button 
             type="button" 
             class="btn-primario" 
-            :disabled="!montoValido || seRequiereObservacion" 
+            :disabled="!montoValido" 
             @click="confirmarCierre"
           >
             Confirmar Cierre

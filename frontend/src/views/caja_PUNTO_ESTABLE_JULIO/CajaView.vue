@@ -36,28 +36,10 @@ const historialVentas = ref([])
 onMounted(async () => {
   await cargarClientesDesdeBD()
   await cargarHistorialDesdeBD()
-  await verificarEstadoCaja()
-})
-
-async function verificarEstadoCaja() {
-  try {
-    const res = await api.get('/caja/estado')
-    if (res.data && res.data.status === 'open') {
-      idCajaActiva.value = res.data.id_caja
-      saldoDigital.value = parseFloat(res.data.monto_sistema)
-      cajaAbierta.value = true
-      mostrarModalApertura.value = false
-      logsServidor.value = 'Sesión de caja detectada activa'
-    } else {
-      cajaAbierta.value = false
-      mostrarModalApertura.value = true
-    }
-  } catch (error) {
-    console.error(error)
-    cajaAbierta.value = false
+  if (!cajaAbierta.value) {
     mostrarModalApertura.value = true
   }
-}
+})
 
 async function cargarClientesDesdeBD() {
   try {
@@ -94,12 +76,6 @@ async function cargarHistorialDesdeBD() {
 }
 
 async function handleAbrirCaja() {
-  if (montoInicialLocal.value === null || montoInicialLocal.value === undefined || montoInicialLocal.value < 0) {
-    logsServidor.value = 'Monto inicial inválido (debe ser mayor o igual a 0)'
-    alert('El monto inicial no puede ser negativo.')
-    return
-  }
-
   try {
     logsServidor.value = 'Abriendo caja...'
     const res = await api.post('/caja/abrir', { monto_inicial: montoInicialLocal.value })
@@ -109,7 +85,6 @@ async function handleAbrirCaja() {
       cajaAbierta.value = true
       mostrarModalApertura.value = false 
       logsServidor.value = 'Caja Abierta Exitosamente'
-      await cargarHistorialDesdeBD()
     }
   } catch (error) {
     console.error(error)
@@ -149,7 +124,7 @@ async function handleProcesarVenta(datosVentaForm) {
 
     if (res.data.status === 'success') {
       ticketData.value = {
-        nroRecibo: res.data.nro_factura || res.data.id_venta || `VTA-${String(res.data.id_venta).padStart(3, '0')}`,
+        nroRecibo: res.data.id_venta || `VTA-${String(res.data.id_venta).padStart(3, '0')}`,
         cliente: clienteSeleccionadoPrincipal.value, 
         placa: datosVentaForm.placa,
         metodo_pago: datosVentaForm.metodo_pago,
