@@ -65,8 +65,8 @@ Route::middleware('auth')->group(function () {
 
     });
 
-    // --- Grupo Almacenero (Roles 1, 5) — Inventario y Compras ---
-    Route::middleware('role:1,5')->group(function () {
+    // --- Grupo Inventario y Compras (Roles 1, 2, 5) ---
+    Route::middleware('role:1,2,5')->group(function () {
         Route::get('/proveedores', [ProveedorController::class, 'index']);
         Route::post('/proveedores', [ProveedorController::class, 'store']);
         Route::get('/proveedores/{id}', [ProveedorController::class, 'show']);

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { usePlanillasStore } from '@/stores/planillas'
+import { useToastStore } from '@/stores/toast'
 import PlanillaFormModal from './PlanillaFormModal.vue'
 
 const props = defineProps({
@@ -9,7 +10,10 @@ const props = defineProps({
 })
 
 const store = usePlanillasStore()
+const toast = useToastStore()
 const mostrarForm = ref(false)
+const confirmarEliminar = ref(false)
+const planillaEliminar = ref(null)
 
 const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
@@ -43,10 +47,21 @@ function cerrarForm() {
   mostrarForm.value = false
 }
 
-async function eliminarPlanilla(id) {
-  if (confirm('¿Eliminar esta planilla?')) {
-    await store.eliminar(id)
-  }
+async function ejecutarEliminar() {
+  await store.eliminar(planillaEliminar.value)
+  toast.show('Planilla eliminada correctamente')
+  confirmarEliminar.value = false
+  planillaEliminar.value = null
+}
+
+function confirmarEliminarPlanilla(id) {
+  planillaEliminar.value = id
+  confirmarEliminar.value = true
+}
+
+function cerrarConfirmar() {
+  confirmarEliminar.value = false
+  planillaEliminar.value = null
 }
 </script>
 
@@ -82,7 +97,7 @@ async function eliminarPlanilla(id) {
           <td class="text-deducciones">-${{ Number(p.deducciones).toFixed(2) }}</td>
           <td class="text-neto">${{ Number(p.sueldo_neto).toFixed(2) }}</td>
           <td>
-            <button class="btn-accion-sm btn-eliminar-sm" @click="eliminarPlanilla(p.id_planilla)" title="Eliminar">
+            <button class="btn-accion-sm btn-eliminar-sm" @click="confirmarEliminarPlanilla(p.id_planilla)" title="Eliminar">
               <svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px">
                 <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
@@ -102,6 +117,20 @@ async function eliminarPlanilla(id) {
         :sueldo-base="sueldoBase"
         @cerrar="cerrarForm"
       />
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="confirmarEliminar" class="modal-overlay" @click.self="cerrarConfirmar">
+        <div class="modal-confirmar">
+          <h3>Eliminar Planilla</h3>
+          <p>¿Estás seguro de eliminar esta planilla?</p>
+          <p class="nota-eliminar">Una vez eliminada no se podrá recuperar.</p>
+          <div class="acciones-confirmar">
+            <button class="btn-cancelar-sm" @click="cerrarConfirmar">Volver</button>
+            <button class="btn-confirmar-eliminar" @click="ejecutarEliminar">Sí, eliminar</button>
+          </div>
+        </div>
+      </div>
     </Teleport>
   </div>
 </template>
@@ -200,4 +229,80 @@ async function eliminarPlanilla(id) {
   padding: 30px;
   font-size: 13px;
 }
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 110;
+  padding: 20px;
+}
+
+.modal-confirmar {
+  background: #FFFFFF;
+  border-radius: 14px;
+  max-width: 440px;
+  width: 100%;
+  padding: 28px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-confirmar h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #042D29;
+  margin-bottom: 12px;
+}
+
+.modal-confirmar p {
+  font-size: 14px;
+  color: #1F2937;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.nota-eliminar {
+  font-size: 12px;
+  color: #929079;
+  margin-bottom: 20px;
+}
+
+.acciones-confirmar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-cancelar-sm {
+  padding: 10px 20px;
+  background: #FFFFFF;
+  color: #929079;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar-sm:hover { border-color: #929079; color: #1F2937; }
+
+.btn-confirmar-eliminar {
+  padding: 10px 24px;
+  background: #741102;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-confirmar-eliminar:hover { background: #5A0D01; }
 </style>

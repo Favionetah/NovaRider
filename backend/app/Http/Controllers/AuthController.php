@@ -190,7 +190,7 @@ class AuthController extends Controller
                 'descripcion' => 'Planilla global de horarios semanales',
                 'ruta' => '/horarios',
                 'color' => '#042D29',
-                'roles_permitidos' => [1, 3],
+                'roles_permitidos' => [1, 4],
             ],
             [
                 'id' => 'reservas',

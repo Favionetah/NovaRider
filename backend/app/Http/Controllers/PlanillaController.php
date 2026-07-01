@@ -14,6 +14,7 @@ class PlanillaController extends Controller
     public function index(Request $request)
     {
         $query = Planilla::with('empleado')
+            ->where('estadoA', true)
             ->orderBy('anio', 'desc')
             ->orderBy('mes', 'desc')
             ->orderBy('id_planilla', 'desc');
