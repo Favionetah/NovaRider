@@ -10,7 +10,7 @@ public function up(): void
 {
            Schema::create('cajas_sesiones', function (Blueprint $table) {
                $table->id('id_sesion');
-               $table->unsignedBigInteger('id_usuario_apertura'); 
+               $table-> integer('id_usuario_apertura'); 
                $table->decimal('monto_inicial', 10, 2); 
                $table->decimal('monto_final_digital', 10, 2)->default(0.00); 
                $table->decimal('monto_final_fisico', 10, 2)->nullable(); 
@@ -21,7 +21,7 @@ public function up(): void
                $table->dateTime('fecha_cierre')->nullable();
                $table->timestamps();
 
-               $table->foreign('id_usuario_apertura')->references('id_usuario')->on('tusuarios');
+               $table->foreign('id_usuario_apertura')->references('id_usuario')->on('TUsuarios');
            });
        }
 
