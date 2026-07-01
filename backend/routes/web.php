@@ -151,6 +151,7 @@ Route::middleware('auth')->group(function () {
 
         // === Rutas de Órdenes ===
         Route::get('/servicios', [OrdenController::class, 'servicios']);
+        Route::post('/servicios', [OrdenController::class, 'guardarServicio']);
         Route::get('/ordenes/reporte/pdf', [OrdenController::class, 'reportePdf']);
         Route::get('/ordenes/{id}/verificacion', [OrdenController::class, 'obtenerListaVerificacion']);
         Route::post('/ordenes/guardar-verificacion', [OrdenController::class, 'guardarListaVerificacion']);

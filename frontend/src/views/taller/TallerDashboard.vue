@@ -113,6 +113,10 @@
                   <button @click="abrirModalServicioOrden(orden)" class="btn-table-action btn-service" title="Agregar Servicio">
                     Servicio
                   </button>
+
+                  <button @click="abrirQrOrden(orden)" class="btn-table-action btn-qr" title="Ver QR de la orden">
+                    QR
+                  </button>
                 </td>
               </tr>
               <tr v-if="ordenesFiltradas.length === 0">
@@ -224,6 +228,28 @@
           <button @click="showModalServicios = false" class="nr-btn-close">✕</button>
         </div>
         <div class="nr-modal-body">
+          <form @submit.prevent="guardarNuevoServicio" class="service-create-form">
+            <div class="nr-form-row">
+              <div class="nr-form-group flex-1">
+                <label>Nombre del servicio</label>
+                <input type="text" v-model.trim="nuevoServicio.nombre" required class="novarider-input form-input-plain" placeholder="Ej. Cambio de aceite">
+              </div>
+              <div class="nr-form-group service-price-field">
+                <label>Precio estimado</label>
+                <input type="number" min="0" step="0.01" v-model.number="nuevoServicio.precio_estimado" required class="novarider-input form-input-plain">
+              </div>
+            </div>
+            <div class="nr-form-group">
+              <label>Descripcion</label>
+              <input type="text" v-model.trim="nuevoServicio.descripcion" class="novarider-input form-input-plain" placeholder="Detalle del servicio">
+            </div>
+            <div class="service-form-actions">
+              <button type="submit" class="btn-novarider-primary-submit">
+                Guardar Servicio
+              </button>
+            </div>
+          </form>
+
           <table class="novarider-table">
             <thead>
               <tr>
@@ -265,7 +291,15 @@
           <div class="nr-form-row">
             <div class="nr-form-group flex-1">
               <label>Cantidad</label>
-              <input type="number" min="1" v-model.number="detalleServicio.cantidad" required class="novarider-input form-input-plain">
+              <input
+                type="number"
+                min="1"
+                max="999"
+                v-model.number="detalleServicio.cantidad"
+                @input="limitarCantidadServicio"
+                required
+                class="novarider-input form-input-plain"
+              >
             </div>
             <div class="nr-form-group flex-1">
               <label>Precio</label>
@@ -290,6 +324,23 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <div v-if="mostrarModalQr" class="nr-modal-overlay" @click="cerrarModalQr">
+      <div class="nr-modal qr-modal" @click.stop>
+        <div class="nr-modal-header">
+          <h3>QR de orden #{{ ordenQrActiva ? ordenQrActiva.nro_orden : '' }}</h3>
+          <button @click="cerrarModalQr" class="nr-btn-close">x</button>
+        </div>
+        <div class="qr-modal-body">
+          <img :src="qrOrdenUrl" alt="QR de orden de trabajo" class="qr-image">
+          <div class="qr-info" v-if="ordenQrActiva">
+            <strong>#{{ ordenQrActiva.nro_orden }}</strong>
+            <span>{{ ordenQrActiva.motocicleta ? ordenQrActiva.motocicleta.placa : ordenQrActiva.placa_simulada || 'SIN PLACA' }}</span>
+            <span>{{ ordenQrActiva.estado }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -326,8 +377,15 @@ export default {
       mostrarSugerencias: false,
       showModalServicios: false,
       serviciosDisponibles: [], // Almacena los servicios obtenidos
+      nuevoServicio: {
+        nombre: '',
+        descripcion: '',
+        precio_estimado: 0
+      },
       mostrarModalServicioOrden: false,
       ordenServicioActiva: null,
+      mostrarModalQr: false,
+      ordenQrActiva: null,
       detalleServicio: {
         id_servicio: '',
         cantidad: 1,
@@ -372,6 +430,11 @@ export default {
     subtotalServicio() {
       const cantidad = Number(this.detalleServicio.cantidad || 0);
       return this.precioServicioSeleccionado * cantidad;
+    },
+    qrOrdenUrl() {
+      if (!this.ordenQrActiva) return '';
+
+      return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(this.qrOrdenContenido(this.ordenQrActiva))}`;
     }
   },
   mounted() { 
@@ -388,6 +451,29 @@ export default {
       } catch (e) {
         console.error("Error al cargar servicios:", e);
         alert("No se pudieron cargar los servicios.");
+      }
+    },
+
+    async guardarNuevoServicio() {
+      try {
+        const res = await tallerService.crearServicio(this.nuevoServicio);
+        const servicioGuardado = res.data.servicio;
+
+        this.serviciosDisponibles = [
+          ...this.serviciosDisponibles.filter(servicio => servicio.id_servicio !== servicioGuardado.id_servicio),
+          servicioGuardado
+        ].sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+        this.nuevoServicio = {
+          nombre: '',
+          descripcion: '',
+          precio_estimado: 0
+        };
+
+        this.mostrarNotificacion('Servicio registrado correctamente.');
+      } catch (e) {
+        console.error("Error al guardar servicio:", e);
+        alert(e.response?.data?.message || "No se pudo registrar el servicio.");
       }
     },
     
@@ -416,6 +502,30 @@ export default {
       this.ordenServicioActiva = null;
     },
 
+    abrirQrOrden(orden) {
+      this.ordenQrActiva = orden;
+      this.mostrarModalQr = true;
+    },
+
+    cerrarModalQr() {
+      this.mostrarModalQr = false;
+      this.ordenQrActiva = null;
+    },
+
+    qrOrdenContenido(orden) {
+      const placa = orden.motocicleta ? orden.motocicleta.placa : orden.placa_simulada || 'SIN PLACA';
+      const mecanico = this.formatMecanico(orden.empleado);
+
+      return [
+        'NovaRider - Orden de trabajo',
+        `Orden: ${orden.nro_orden}`,
+        `Placa: ${placa}`,
+        `Estado: ${orden.estado}`,
+        `Mecanico: ${mecanico}`,
+        `Fecha ingreso: ${orden.fecha_ingreso}`
+      ].join('\n');
+    },
+
     async guardarServicioOrden() {
       if (!this.ordenServicioActiva) return;
 
@@ -441,7 +551,7 @@ export default {
       const orden = this.ordenes.find(o => o.id_orden === payload.idOrden);
       if (orden) {
         orden.validado = 1; 
-        localStorage.setItem(`orden_validada_${payload.idOrden}`, 'true');
+        orden.estado = 'Listo para entrega';
       }
       this.mostrarNotificacion(payload.mensaje);
       this.vistaActual = 'lista';
@@ -471,13 +581,10 @@ export default {
         const res = await tallerService.obtenerOrdenes();
         let data = res.data.ordenes || res.data;
         
-        this.ordenes = data.map(orden => {
-          const yaValidada = localStorage.getItem(`orden_validada_${orden.id_orden}`) === 'true';
-          return {
-            ...orden,
-            validado: yaValidada ? 1 : (orden.validado || 0)
-          };
-        });
+        this.ordenes = data.map(orden => ({
+          ...orden,
+          validado: orden.validado || 0
+        }));
       } catch (e) { 
         console.error("Error cargando órdenes:", e);
       }
@@ -577,6 +684,8 @@ export default {
 .btn-verify { color: #042D29; border-color: #B2C0BF; background-color: #F4F6F6; }
 .btn-delete { color: #B71C1C; border-color: #EF9A9A; background-color: #FFEBEE; }
 .btn-service { color: #6F3F00; border-color: #F5C16C; background-color: #FFF6E5; }
+.btn-qr { color: #1E3A78; border-color: #B8C7EA; background-color: #F3F6FF; }
+.btn-table-action:disabled { opacity: 0.62; cursor: not-allowed; }
 .btn-novarider-primary { background: #042D29; color: #FFFFFF; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .nr-modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(4, 45, 41, 0.4); display: flex; align-items: center; justify-content: center; z-index: 9999; }
 .nr-modal { background: #FFFFFF; border-radius: 12px; width: 90%; max-width: 500px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
@@ -596,6 +705,14 @@ export default {
 .service-summary { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border: 1px solid #E2E4E3; border-radius: 8px; background: #FAFAFA; color: #042D29; }
 .service-summary span { font-size: 13px; font-weight: 600; color: #55574A; }
 .service-summary strong { font-size: 18px; }
+.service-create-form { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid #E2E4E3; border-radius: 8px; background: #FAFAFA; }
+.service-price-field { width: 150px; flex-shrink: 0; }
+.service-form-actions { display: flex; justify-content: flex-end; }
+.qr-modal { max-width: 360px; }
+.qr-modal-body { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.qr-image { width: 220px; height: 220px; border: 1px solid #E2E4E3; border-radius: 8px; padding: 10px; background: #FFFFFF; }
+.qr-info { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #042D29; font-size: 13px; }
+.qr-info strong { font-size: 16px; }
 .search-autocomplete { position: relative; }
 .suggestions-list { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #E2E4E3; border-radius: 6px; list-style: none; max-height: 150px; overflow-y: auto; z-index: 1000; margin: 4px 0 0 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
 .suggestions-list li { padding: 10px; cursor: pointer; font-size: 13px; }

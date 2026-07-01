@@ -24,7 +24,21 @@ class OrdenController extends Controller
                 ->orderByDesc('TOrdenesTrabajo.id_orden')
                 ->get([
                     'TOrdenesTrabajo.*',
-                    DB::raw('CASE WHEN lv.id_lista IS NULL THEN 0 ELSE 1 END as validado'),
+                    DB::raw("
+                        CASE
+                            WHEN lv.id_lista IS NOT NULL
+                                AND (
+                                    lv.frenos_revisados = 1
+                                    OR lv.luces_revisadas = 1
+                                    OR lv.piezas_ajustadas = 1
+                                    OR lv.prueba_ruta = 1
+                                )
+                                AND lv.kilometraje IS NOT NULL
+                                AND lv.fecha_validacion IS NOT NULL
+                            THEN 1
+                            ELSE 0
+                        END as validado
+                    "),
                 ])
                 ->map(fn ($orden) => $this->formatearOrden($orden));
 
@@ -144,6 +158,17 @@ class OrdenController extends Controller
             'fecha_validacion' => 'required|date',
         ]);
 
+        if (!(
+            $validated['frenos_revisados'] ||
+            $validated['luces_revisadas'] ||
+            $validated['piezas_ajustadas'] ||
+            $validated['prueba_ruta']
+        )) {
+            return response()->json([
+                'message' => 'Debe marcar al menos un punto de la lista de verificacion antes de validar la orden.',
+            ], 422);
+        }
+
         DB::table('TListasVerificacion')->updateOrInsert(
             ['id_orden' => $validated['id_orden']],
             [
@@ -206,6 +231,48 @@ class OrdenController extends Controller
             ->get(['id_servicio', 'nombre', 'descripcion', 'precio_estimado']);
 
         return response()->json($servicios);
+    }
+
+    public function guardarServicio(Request $request)
+    {
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'descripcion' => 'nullable|string|max:500',
+            'precio_estimado' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $servicio = Servicio::create([
+                'nombre' => $validated['nombre'],
+                'descripcion' => $validated['descripcion'] ?? '',
+                'precio_estimado' => $validated['precio_estimado'],
+                'estadoA' => true,
+                'usuarioA' => auth()->id() ?? 1,
+                'fechahoraA' => now(),
+            ]);
+
+            $this->registrarAuditoria(
+                'TServicios',
+                $servicio->id_servicio,
+                'I',
+                null,
+                null,
+                $servicio->nombre,
+                'Registro de servicio'
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Servicio registrado correctamente.',
+                'servicio' => $servicio,
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error al guardar servicio: ' . $e->getMessage()], 500);
+        }
     }
 
     public function guardarServicioOrden(Request $request, $id)

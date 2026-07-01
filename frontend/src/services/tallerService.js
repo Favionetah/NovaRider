@@ -44,6 +44,10 @@ const tallerService = {
     return api.get('/servicios');
   },
 
+  crearServicio(payload) {
+    return api.post('/servicios', payload);
+  },
+
   guardarServicioOrden(idOrden, payload) {
     return api.post(`/ordenes/${idOrden}/servicios`, payload);
   }
