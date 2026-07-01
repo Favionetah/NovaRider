@@ -70,7 +70,7 @@ async function cerrarSesion() {
           <circle cx="12" cy="16" r="1.5" fill="currentColor" />
           <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
         </svg>
-        <span class="cambiar-texto">Cambiar</span>
+        <span class="cambiar-texto">Cambiar contrase&ntilde;a</span>
       </button>
       <span class="header-rol-badge" :class="'rol-' + (auth.user?.rol || '').toLowerCase()">
         {{ auth.user?.rol }}

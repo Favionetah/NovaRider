@@ -8,6 +8,7 @@ const auth = useAuthStore()
 
 const username = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const mensajeError = ref('')
 const enviando = ref(false)
 const btnRef = ref(null)
@@ -126,14 +127,32 @@ async function iniciarSesion() {
 
           <div class="field-group">
             <label for="password">Contrase&ntilde;a</label>
-            <input
-              id="password"
-              v-model="password"
-              type="password"
-              placeholder="Ingrese su contrase&ntilde;a"
-              required
-              autocomplete="current-password"
-            />
+            <div class="password-wrapper">
+              <input
+                id="password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="Ingrese su contrase&ntilde;a"
+                required
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="btn-toggle-password"
+                @click="showPassword = !showPassword"
+                :title="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+              >
+                <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none" class="eye-icon">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" fill="none" class="eye-icon">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <button
@@ -294,6 +313,43 @@ async function iniciarSesion() {
 
 .field-group input:focus {
   border-color: #042D29;
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  padding-right: 36px;
+}
+
+.btn-toggle-password {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  color: #929079;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.btn-toggle-password:hover {
+  color: #042D29;
+}
+
+.eye-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .mensaje-error {
