@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const props = defineProps({
   show: { type: Boolean, default: false },
   datosTicket: {
     type: Object,
@@ -146,33 +146,11 @@ function descargarTicket() {
 .btn-action-outline:hover { border-color: #042D29; color: #042D29; background: #F4F6F6; }
 .btn-cerrar-principal { width: 100%; padding: 13px; background: #042D29; color: #FFFFFF; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; text-align: center; }
 .btn-cerrar-principal:hover { background: #0b4640; }
-</style>
 
-<style>
 @media print {
-  /* Habilitar visibilidad únicamente del comprobante */
-  body * {
-    visibility: hidden;
-  }
-  /* Forzar que el modal de ticket y sus hijos sean visibles */
-  .printable-area, .printable-area * {
-    visibility: visible !important;
-  }
-  .printable-area {
-    position: absolute;
-    left: 50%;
-    top: 20px;
-    transform: translateX(-50%);
-    width: 100% !important;
-    max-width: 440px !important;
-    box-shadow: none !important;
-    border: none !important;
-    background: #FFFFFF !important;
-  }
-  /* Ocultar botones de acción y cabecera innecesarios */
-  .no-print, .no-print * {
-    display: none !important;
-    visibility: hidden !important;
-  }
+  body * { visibility: hidden; }
+  .printable-area, .printable-area * { visibility: visible; }
+  .printable-area { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border-radius: 0 !important; }
+  .no-print { display: none !important; }
 }
 </style>
