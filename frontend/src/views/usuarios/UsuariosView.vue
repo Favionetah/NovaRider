@@ -11,6 +11,8 @@ const store = useUsuariosStore()
 const tabActivo = ref('activos')
 const busqueda = ref('')
 const filtroRol = ref('')
+const paginaActual = ref(1)
+const POR_PAGINA = 12
 const stats = ref({ total: 0, activos: 0, turnos_hoy: 0 })
 
 async function cargarStats() {
@@ -33,8 +35,13 @@ onMounted(async () => {
 watch(tabActivo, async () => {
   busqueda.value = ''
   filtroRol.value = ''
+  paginaActual.value = 1
   await nextTick()
   animarEntrada()
+})
+
+watch([busqueda, filtroRol], () => {
+  paginaActual.value = 1
 })
 
 function animarEntrada() {
@@ -73,6 +80,27 @@ const inactivosFiltrados = computed(() => {
     u.ci?.toLowerCase().includes(q)
   )
 })
+
+const totalPaginas = computed(() => {
+  const lista = tabActivo.value === 'activos' ? usuariosFiltrados.value : inactivosFiltrados.value
+  return Math.max(1, Math.ceil(lista.length / POR_PAGINA))
+})
+
+const usuariosPagina = computed(() => {
+  const start = (paginaActual.value - 1) * POR_PAGINA
+  return usuariosFiltrados.value.slice(start, start + POR_PAGINA)
+})
+
+const inactivosPagina = computed(() => {
+  const start = (paginaActual.value - 1) * POR_PAGINA
+  return inactivosFiltrados.value.slice(start, start + POR_PAGINA)
+})
+
+function irAPagina(p) {
+  if (p >= 1 && p <= totalPaginas.value) {
+    paginaActual.value = p
+  }
+}
 
 const usuarioEditando = ref(null)
 const mostrarForm = ref(false)
@@ -262,7 +290,7 @@ function exportarPdf() {
             </tr>
           </thead>
           <tbody v-if="tabActivo === 'activos'">
-            <tr v-for="u in usuariosFiltrados" :key="u.id_usuario">
+            <tr v-for="u in usuariosPagina" :key="u.id_usuario">
               <td class="col-id">{{ u.id_usuario }}</td>
               <td class="col-emp">
                 <span class="emp-nombre enlace" @click="irADetalle(u.id_usuario)">{{ u.nombre_completo }}</span>
@@ -295,14 +323,14 @@ function exportarPdf() {
                 </button>
               </td>
             </tr>
-            <tr v-if="usuariosFiltrados.length === 0">
+            <tr v-if="usuariosPagina.length === 0">
               <td colspan="6" class="sin-datos">
                 {{ busqueda || filtroRol ? 'No se encontraron usuarios con esos filtros' : 'No hay usuarios activos registrados' }}
               </td>
             </tr>
           </tbody>
           <tbody v-else>
-            <tr v-for="u in inactivosFiltrados" :key="u.id_usuario">
+            <tr v-for="u in inactivosPagina" :key="u.id_usuario">
               <td class="col-id">{{ u.id_usuario }}</td>
               <td class="col-emp">
                 <span class="emp-nombre">{{ u.nombre_completo }}</span>
@@ -323,13 +351,21 @@ function exportarPdf() {
                 </button>
               </td>
             </tr>
-            <tr v-if="inactivosFiltrados.length === 0">
+            <tr v-if="inactivosPagina.length === 0">
               <td colspan="6" class="sin-datos">
                 {{ busqueda ? 'No se encontraron usuarios inactivos con ese criterio' : 'No hay usuarios inactivos' }}
               </td>
             </tr>
           </tbody>
         </table>
+
+        <div class="paginacion">
+          <button class="btn-pag" :disabled="paginaActual === 1" @click="irAPagina(1)">««</button>
+          <button class="btn-pag" :disabled="paginaActual === 1" @click="irAPagina(paginaActual - 1)">«</button>
+          <span class="pag-info">Página {{ paginaActual }} de {{ totalPaginas }}</span>
+          <button class="btn-pag" :disabled="paginaActual === totalPaginas" @click="irAPagina(paginaActual + 1)">»</button>
+          <button class="btn-pag" :disabled="paginaActual === totalPaginas" @click="irAPagina(totalPaginas)">»»</button>
+        </div>
       </div>
     </div>
 
@@ -576,6 +612,7 @@ function exportarPdf() {
 /* ── Table ── */
 .tabla-wrapper {
   overflow-x: auto;
+  padding: 0 16px 20px 16px;
 }
 
 .tabla-usuarios {
@@ -772,6 +809,47 @@ function exportarPdf() {
 
 .enlace:hover {
   color: #741102;
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.btn-pag {
+  padding: 6px 12px;
+  background: #FFFFFF;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: #042D29;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-pag:hover:not(:disabled) {
+  border-color: #042D29;
+  background: #F0F0EC;
+}
+
+.btn-pag:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pag-info {
+  font-size: 13px;
+  color: #929079;
+  font-weight: 600;
+  min-width: 120px;
+  text-align: center;
 }
 
 
