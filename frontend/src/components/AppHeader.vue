@@ -13,7 +13,15 @@ const mostrarModalContrasena = ref(false)
 const mostrarConfirmarCerrar = ref(false)
 
 const navModulos = computed(() =>
-  auth.modulosPermitidos.filter(m => m.ruta)
+  auth.modulosPermitidos
+    .map((m) => {
+      if (m.id === 'taller') {
+        return { ...m, nombre: 'Taller y Reparacion', ruta: '/taller' }
+      }
+
+      return m
+    })
+    .filter(m => m.ruta)
 )
 
 async function cerrarSesion() {

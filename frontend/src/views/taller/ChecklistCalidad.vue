@@ -2,8 +2,8 @@
   <div class="corp-checklist-card">
     <div class="panel-header">
       <div>
-        <h3>SISTEMA DE VERIFICACIÓN TÉCNICA (HU-12)</h3>
-        <p class="panel-subtitle">Todos los componentes deben validarse de forma obligatoria para dar de alta el vehículo.</p>
+        <h3>SISTEMA DE VERIFICACION TECNICA (HU-12)</h3>
+        <p class="panel-subtitle">Todos los componentes deben validarse de forma obligatoria para dar de alta el vehiculo.</p>
       </div>
       <div class="panel-tag">ORDEN ACTIVA: <strong>#{{ ordenActiva.nro_orden }}</strong></div>
     </div>
@@ -12,8 +12,8 @@
       <div class="switch-list">
         <div class="switch-item" :class="{ checked: checklist.frenos_revisados }">
           <div class="item-text">
-            <h4>[01] VERIFICACIÓN DE FRENOS</h4>
-            <p>Control de pastillas, presión hidráulica y discos (según solicitud).</p>
+            <h4>[01] VERIFICACION DE FRENOS</h4>
+            <p>Control de pastillas, presion hidraulica y discos segun solicitud.</p>
           </div>
           <label class="corp-switch">
             <input type="checkbox" v-model="checklist.frenos_revisados">
@@ -23,8 +23,8 @@
 
         <div class="switch-item" :class="{ checked: checklist.luces_revisadas }">
           <div class="item-text">
-            <h4>[02] COMPONENTES ELÉCTRICOS E INSTALACIÓN</h4>
-            <p>Piezas instaladas correctamente, ópticas y fusibles testeados.</p>
+            <h4>[02] COMPONENTES ELECTRICOS E INSTALACION</h4>
+            <p>Piezas instaladas correctamente, opticas y fusibles testeados.</p>
           </div>
           <label class="corp-switch">
             <input type="checkbox" v-model="checklist.luces_revisadas">
@@ -35,7 +35,7 @@
         <div class="switch-item" :class="{ checked: checklist.piezas_ajustadas }">
           <div class="item-text">
             <h4>[03] PRUEBAS DE FUNCIONAMIENTO</h4>
-            <p>Torque estructural y encendido general completado con éxito.</p>
+            <p>Torque estructural y encendido general completado con exito.</p>
           </div>
           <label class="corp-switch">
             <input type="checkbox" v-model="checklist.piezas_ajustadas">
@@ -45,8 +45,8 @@
 
         <div class="switch-item" :class="{ checked: checklist.prueba_ruta }">
           <div class="item-text">
-            <h4>[04] EVALUACIÓN DINÁMICA EN MOVIMIENTO</h4>
-            <p>Test drive de seguridad completado sin anomalías.</p>
+            <h4>[04] EVALUACION DINAMICA EN MOVIMIENTO</h4>
+            <p>Test drive de seguridad completado sin anomalias.</p>
           </div>
           <label class="corp-switch">
             <input type="checkbox" v-model="checklist.prueba_ruta">
@@ -58,7 +58,7 @@
       <div class="technical-inputs">
         <div class="form-group flex-1">
           <label>KILOMETRAJE DE CONTROL</label>
-          <input type="number" v-model.number="checklist.kilometraje" required class="corp-field">
+          <input type="number" min="0" v-model.number="checklist.kilometraje" required class="corp-field">
         </div>
         <div class="form-group flex-1">
           <label>FECHA DE REGISTRO</label>
@@ -68,7 +68,7 @@
 
       <div class="panel-footer">
         <button type="button" @click="$emit('volver')" class="btn-cancel-checklist">
-          ← REGRESAR
+          REGRESAR
         </button>
         <button type="submit" class="btn-submit-checklist">
           CONCLUIR Y CERTIFICAR CALIDAD
@@ -85,45 +85,76 @@ export default {
   props: ['ordenActiva'],
   data() {
     return {
-      checklist: {
+      checklist: this.checklistInicial()
+    };
+  },
+  mounted() {
+    this.cargarDatos();
+  },
+  methods: {
+    fechaHoy() {
+      return new Date().toISOString().substring(0, 10);
+    },
+    checklistInicial() {
+      return {
         id_orden: this.ordenActiva.id_orden,
         frenos_revisados: false,
         luces_revisadas: false,
         piezas_ajustadas: false,
         prueba_ruta: false,
         kilometraje: 0,
-        fecha_validacion: new Date().toISOString().substring(0, 10)
-      }
-    };
-  },
-  mounted() { this.cargarDatos(); },
-  methods: {
+        fecha_validacion: this.fechaHoy()
+      };
+    },
+    normalizarChecklist(data) {
+      const base = this.checklistInicial();
+
+      return {
+        ...base,
+        ...data,
+        id_orden: this.ordenActiva.id_orden,
+        frenos_revisados: Boolean(Number(data?.frenos_revisados ?? base.frenos_revisados)),
+        luces_revisadas: Boolean(Number(data?.luces_revisadas ?? base.luces_revisadas)),
+        piezas_ajustadas: Boolean(Number(data?.piezas_ajustadas ?? base.piezas_ajustadas)),
+        prueba_ruta: Boolean(Number(data?.prueba_ruta ?? base.prueba_ruta)),
+        kilometraje: Number(data?.kilometraje ?? base.kilometraje),
+        fecha_validacion: data?.fecha_validacion || base.fecha_validacion
+      };
+    },
     async cargarDatos() {
       try {
         const res = await tallerService.obtenerChecklist(this.ordenActiva.id_orden);
-        if (res.data) this.checklist = res.data;
-      } catch (e) { console.log("Checklist vacío localmente."); }
+        if (res.data) {
+          this.checklist = this.normalizarChecklist(res.data);
+        }
+      } catch (e) {
+        console.log('Checklist vacio localmente.');
+      }
     },
     async enviarFormulario() {
-  try {
-    // 1. Guardamos en el servidor
-    await tallerService.guardarChecklist(this.checklist);
-    
-    // 2. Emitimos el evento hacia el padre (Listado.vue)
-    // Pasamos el ID para identificar la orden y un mensaje de éxito
-    this.$emit('ordenValidada', {
-        idOrden: this.ordenActiva.id_orden,
-        mensaje: '¡Validación de calidad completada exitosamente!'
-    });
-    
-    // 3. Ya no usamos alert(), el padre se encargará de mostrar el Toast
-    
-  } catch (e) {
-    console.error("Error al guardar en el servidor:", e);
-    // Opcional: podrías emitir un evento de error si quieres mostrar un Toast de error
-    alert('❌ Error al guardar la certificación.');
-  }
-}
+      const tieneAlMenosUnaRevision = [
+        this.checklist.frenos_revisados,
+        this.checklist.luces_revisadas,
+        this.checklist.piezas_ajustadas,
+        this.checklist.prueba_ruta
+      ].some(Boolean);
+
+      if (!tieneAlMenosUnaRevision) {
+        alert('Debe marcar al menos un punto de la lista antes de guardar la validacion.');
+        return;
+      }
+
+      try {
+        await tallerService.guardarChecklist(this.normalizarChecklist(this.checklist));
+        this.$emit('ordenValidada', {
+          idOrden: this.ordenActiva.id_orden,
+          mensaje: 'Validacion de calidad completada exitosamente.'
+        });
+      } catch (e) {
+        console.error('Error al guardar en el servidor:', e);
+        alert(e.response?.data?.message || 'Error al guardar la certificacion.');
+      }
+    }
   }
 };
 </script>
