@@ -52,7 +52,7 @@ class DatosPruebaSeeder extends Seeder
             ['id_rol' => 2, 'nombre' => 'Cajero', 'descripcion' => 'Gestion de ventas y caja', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
             ['id_rol' => 3, 'nombre' => 'Mecanico', 'descripcion' => 'Gestion de ordenes de trabajo', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
             ['id_rol' => 4, 'nombre' => 'Recepcionista', 'descripcion' => 'Registro y atencion de clientes', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
-            ['id_rol' => 5, 'nombre' => 'Gerente', 'descripcion' => 'Supervision general del negocio', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
+            ['id_rol' => 5, 'nombre' => 'Almacenero', 'descripcion' => 'Gestión de inventario y compras', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
         ]);
 
         // ===================== 2. TEmpleados =====================

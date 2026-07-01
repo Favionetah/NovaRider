@@ -43,7 +43,7 @@ const router = createRouter({
       path: '/compras',
       name: 'compras',
       component: () => import('@/views/compras/ComprasView.vue'),
-      meta: { requiresAuth: true, roles: [1] },
+      meta: { requiresAuth: true, roles: [1, 5] },
     },
     {
       path: '/caja',

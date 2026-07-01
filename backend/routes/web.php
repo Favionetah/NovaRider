@@ -41,17 +41,6 @@ Route::middleware('auth')->group(function () {
         Route::put('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar']);
         Route::get('/usuarios/reporte/pdf', [UsuarioController::class, 'reportePdf']);
 
-        Route::get('/proveedores', [ProveedorController::class, 'index']);
-        Route::post('/proveedores', [ProveedorController::class, 'store']);
-        Route::get('/proveedores/{id}', [ProveedorController::class, 'show']);
-        Route::put('/proveedores/{id}', [ProveedorController::class, 'update']);
-        Route::delete('/proveedores/{id}', [ProveedorController::class, 'destroy']);
-
-        Route::get('/compras', [CompraController::class, 'index']);
-        Route::post('/compras', [CompraController::class, 'store']);
-        Route::get('/compras/{id}', [CompraController::class, 'show']);
-        Route::get('/compras/reporte/pdf', [CompraController::class, 'reportePdf']);
-
         Route::get('/turnos', [TurnoController::class, 'index']);
         Route::post('/turnos', [TurnoController::class, 'store']);
         Route::post('/turnos/registrar', [TurnoController::class, 'registrar']);
@@ -73,7 +62,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/caja/ventas', [CajaController::class, 'obtenerVentas']);
         Route::post('/caja/cerrar', [CajaController::class, 'cerrarCaja']);
 
-        // --- Módulo Inventario (Roles 1, 2) ---
+    });
+
+    // --- Grupo Almacenero (Roles 1, 5) — Inventario y Compras ---
+    Route::middleware('role:1,5')->group(function () {
+        Route::get('/proveedores', [ProveedorController::class, 'index']);
+        Route::post('/proveedores', [ProveedorController::class, 'store']);
+        Route::get('/proveedores/{id}', [ProveedorController::class, 'show']);
+        Route::put('/proveedores/{id}', [ProveedorController::class, 'update']);
+        Route::delete('/proveedores/{id}', [ProveedorController::class, 'destroy']);
+
+        Route::get('/compras', [CompraController::class, 'index']);
+        Route::post('/compras', [CompraController::class, 'store']);
+        Route::get('/compras/{id}', [CompraController::class, 'show']);
+        Route::get('/compras/reporte/pdf', [CompraController::class, 'reportePdf']);
+
+        // --- Inventario ---
         Route::get('/ubicaciones/arbol', [EstanteController::class, 'arbol']);
 
         Route::get('/productos', [ProductoController::class, 'index']);
