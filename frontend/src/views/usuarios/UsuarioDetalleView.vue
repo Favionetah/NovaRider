@@ -51,13 +51,15 @@ function volver() {
 
 async function guardarSueldo() {
   guardandoSueldo.value = true
+  error.value = ''
   try {
     const { default: api } = await import('@/services/api')
     await api.put(`/usuarios/${route.params.id}`, { sueldo_base: sueldoForm.value })
     usuario.value.sueldo_base = sueldoForm.value
     sueldoEditando.value = false
-  } catch {
-    error.value = 'Error al guardar sueldo base'
+  } catch (err) {
+    const msg = err.response?.data?.errors?.sueldo_base?.[0]
+    error.value = msg ? 'Su sueldo no puede ser negativo' : 'Error al guardar sueldo base'
   } finally {
     guardandoSueldo.value = false
   }
@@ -100,9 +102,9 @@ async function guardarSueldo() {
             </svg>
           </div>
           <div v-else class="sueldo-edit">
-            <input v-model.number="sueldoForm" type="number" min="0" step="0.01" class="sueldo-input" />
+            <input v-model.number="sueldoForm" type="number" min="0" step="0.01" class="sueldo-input" @input="error = ''" />
             <button class="btn-sm btn-save" @click="guardarSueldo" :disabled="guardandoSueldo">Guardar</button>
-            <button class="btn-sm btn-cancel" @click="sueldoEditando = false">Cancelar</button>
+            <button class="btn-sm btn-cancel" @click="sueldoEditando = false; error = ''">Cancelar</button>
           </div>
         </div>
       </div>
@@ -206,7 +208,7 @@ async function guardarSueldo() {
             :id-empleado="Number(route.params.id)"
             :horario-actual="programaciones"
             @cerrar="mostrarModalHorario = false"
-            @guardado="() => { programacionesStore.obtener(Number(route.params.id)); mostrarModalHorario = false; horarioListo = true }"
+            @guardado="() => { mostrarModalHorario = false; horarioListo = true }"
           />
         </Teleport>
       </div>

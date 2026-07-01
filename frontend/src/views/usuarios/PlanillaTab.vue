@@ -107,7 +107,7 @@ async function eliminarPlanilla(id) {
 </template>
 
 <style scoped>
-.planilla-content { padding: 4px 0; }
+.planilla-content { padding: 4px 16px; }
 
 .tab-toolbar {
   display: flex;

@@ -198,7 +198,7 @@ class AuthController extends Controller
                 'descripcion' => 'Gestión de reservas, despachos y envíos',
                 'ruta' => '/reservas',
                 'color' => '#042D29',
-                'roles_permitidos' => [1, 3, 4],
+                'roles_permitidos' => [1, 4],
             ],
         ];
 

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useProgramacionesStore } from '@/stores/programaciones'
+import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
   idEmpleado: { type: Number, required: true },
@@ -10,6 +11,7 @@ const props = defineProps({
 const emit = defineEmits(['cerrar', 'guardado'])
 
 const store = useProgramacionesStore()
+const toast = useToastStore()
 
 const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const tipoJornada = ref('completa')
@@ -88,6 +90,7 @@ async function guardar() {
   errorGeneral.value = ''
   try {
     await store.guardar(props.idEmpleado, horario.value)
+    toast.show('Horario guardado correctamente')
     emit('guardado', horario.value)
     cerrar()
   } catch (err) {
@@ -99,7 +102,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
         <h2>Configurar Horario Semanal</h2>

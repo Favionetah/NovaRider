@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { usePlanillasStore } from '@/stores/planillas'
+import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
   idEmpleado: { type: Number, required: true },
@@ -10,6 +11,7 @@ const props = defineProps({
 const emit = defineEmits(['cerrar'])
 
 const store = usePlanillasStore()
+const toast = useToastStore()
 
 const now = new Date()
 const form = ref({
@@ -51,6 +53,7 @@ async function guardar() {
       ...form.value,
       sueldo_neto: sueldoNeto.value,
     })
+    toast.show('Liquidación guardada correctamente')
     cerrar()
   } catch (err) {
     const data = err.response?.data
@@ -66,7 +69,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card modal-sm">
       <div class="modal-header">
         <h2>Nueva Liquidaci&oacute;n</h2>
@@ -183,6 +186,7 @@ async function guardar() {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .form-group label { font-size: 13px; font-weight: 500; color: #1F2937; }

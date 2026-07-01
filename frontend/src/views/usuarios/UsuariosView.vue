@@ -2,11 +2,13 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUsuariosStore } from '@/stores/usuarios'
+import { useToastStore } from '@/stores/toast'
 import UsuarioFormModal from './UsuarioFormModal.vue'
 import ConfirmarEliminacion from './ConfirmarEliminacion.vue'
 
 const router = useRouter()
 const store = useUsuariosStore()
+const toast = useToastStore()
 
 const tabActivo = ref('activos')
 const busqueda = ref('')
@@ -118,8 +120,10 @@ function editarUsuario(usuario) {
 }
 
 function cerrarFormulario() {
+  const eraEdicion = !!usuarioEditando.value
   mostrarForm.value = false
   usuarioEditando.value = null
+  toast.show(eraEdicion ? 'Usuario editado correctamente' : 'Usuario creado correctamente')
 }
 
 const usuarioEliminar = ref(null)
@@ -147,6 +151,7 @@ async function eliminarUsuario() {
   await store.eliminar(usuarioEliminar.value.id_usuario)
   mostrarConfirmacion.value = false
   usuarioEliminar.value = null
+  toast.show('Usuario desactivado correctamente')
 }
 
 function cancelarEliminar() {
@@ -156,6 +161,7 @@ function cancelarEliminar() {
 
 async function reactivarUsuario(id) {
   await store.reactivar(id)
+  toast.show('Usuario reactivado correctamente')
 }
 
 function exportarPdf() {

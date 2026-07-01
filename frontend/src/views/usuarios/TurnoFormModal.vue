@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { useTurnosStore } from '@/stores/turnos'
+import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
   turno: { type: Object, default: null },
@@ -10,6 +11,7 @@ const props = defineProps({
 const emit = defineEmits(['cerrar'])
 
 const store = useTurnosStore()
+const toast = useToastStore()
 const esEdicion = !!props.turno
 
 const form = ref({
@@ -39,13 +41,12 @@ async function guardar() {
   try {
     if (esEdicion) {
       await store.actualizar(props.turno.id_turno, {
-        hora_entrada: form.value.hora_entrada || null,
-        hora_salida: form.value.hora_salida || null,
         observacion: form.value.observacion,
       })
     } else {
       await store.crear(form.value)
     }
+    toast.show('Asistencia guardada correctamente')
     cerrar()
   } catch (err) {
     const data = err.response?.data
@@ -61,7 +62,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card modal-sm">
       <div class="modal-header">
         <h2>{{ esEdicion ? 'Editar Asistencia' : 'Asistencia Manual' }}</h2>
@@ -78,11 +79,11 @@ async function guardar() {
           </div>
           <div class="form-group">
             <label>Hora Entrada</label>
-            <input v-model="form.hora_entrada" type="time" />
+            <input v-model="form.hora_entrada" type="time" disabled />
           </div>
           <div class="form-group">
             <label>Hora Salida</label>
-            <input v-model="form.hora_salida" type="time" />
+            <input v-model="form.hora_salida" type="time" disabled />
           </div>
           <div class="form-group form-group-full">
             <label>Observaci&oacute;n</label>
