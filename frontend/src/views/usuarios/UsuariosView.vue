@@ -24,7 +24,7 @@ async function cargarStats() {
 }
 
 onMounted(async () => {
-  await Promise.all([store.listar(), store.listarInactivos()])
+  await Promise.all([store.listar(), store.listarInactivos(), store.obtenerRoles()])
   await cargarStats()
   await nextTick()
   animarEntrada()
@@ -39,7 +39,7 @@ watch(tabActivo, async () => {
 
 function animarEntrada() {
   gsap.fromTo('.page-header', { y: -15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out' })
-  gsap.fromTo('.stats-grid', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.08 })
+  gsap.fromTo('.stats-grid', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out', delay: 0.1 })
   gsap.fromTo('.tabla-wrapper', { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.15 })
   gsap.fromTo('.tabla-usuarios tbody tr', { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
 }
@@ -236,7 +236,7 @@ function exportarPdf() {
 
       <div v-if="store.loading" class="cargando">Cargando usuarios...</div>
 
-      <div v-else class="tabla-wrapper">
+      <div v-show="!store.loading" class="tabla-wrapper">
         <table class="tabla-usuarios">
           <thead>
             <tr>
@@ -759,10 +759,6 @@ function exportarPdf() {
   color: #741102;
 }
 
-.page-header, .stats-grid, .tabla-wrapper,
-.tabla-usuarios tbody tr {
-  opacity: 0;
-}
 
 .sin-datos {
   text-align: center;

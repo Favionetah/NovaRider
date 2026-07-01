@@ -45,13 +45,13 @@ class UsuarioController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'ci' => 'required|string|min:5|max:9|regex:/^\d+$/|unique:TEmpleados,ci',
+            'ci' => 'required|string|min:7|max:8|regex:/^\d+$/|unique:TEmpleados,ci',
             'primer_nombre' => 'required|string|min:2|max:255',
             'segundo_nombre' => 'nullable|string|max:255',
             'apellido_paterno' => 'required|string|min:2|max:255',
             'apellido_materno' => 'nullable|string|max:255',
             'fecha_nacimiento' => 'nullable|date|before:today',
-            'telefono' => 'nullable|string|regex:/^\d{8}$/',
+            'telefono' => 'required|string|regex:/^[67]\d{6,7}$/',
             'cargo' => 'required|string|min:2|max:255',
             'sueldo_base' => 'nullable|numeric|min:0',
             'username' => 'required|string|min:3|max:255|unique:TUsuarios,username',
@@ -61,9 +61,10 @@ class UsuarioController extends Controller
         ], [
             'ci.regex' => 'La cédula de identidad debe contener solo números',
             'ci.unique' => 'Esta cédula de identidad ya está registrada',
-            'ci.min' => 'La cédula debe tener al menos 5 dígitos',
-            'ci.max' => 'La cédula debe tener máximo 9 dígitos',
-            'telefono.regex' => 'El teléfono debe tener 8 dígitos',
+            'ci.min' => 'La cédula debe tener 7 u 8 dígitos',
+            'ci.max' => 'La cédula debe tener 7 u 8 dígitos',
+            'telefono.regex' => 'Debe empezar con 6 o 7 y tener 7 u 8 dígitos',
+            'telefono.required' => 'El teléfono es requerido',
             'fecha_nacimiento.before' => 'La fecha de nacimiento no puede ser futura',
             'primer_nombre.min' => 'El primer nombre debe tener al menos 2 caracteres',
             'apellido_paterno.min' => 'El apellido paterno debe tener al menos 2 caracteres',
@@ -141,13 +142,13 @@ class UsuarioController extends Controller
         $empleadoId = $user->empleado?->id_empleado;
 
         $validated = $request->validate([
-            'ci' => 'sometimes|string|min:5|max:9|regex:/^\d+$/|unique:TEmpleados,ci,' . $empleadoId . ',id_empleado',
+            'ci' => 'sometimes|string|min:7|max:8|regex:/^\d+$/|unique:TEmpleados,ci,' . $empleadoId . ',id_empleado',
             'primer_nombre' => 'sometimes|string|min:2|max:255',
             'segundo_nombre' => 'nullable|string|max:255',
             'apellido_paterno' => 'sometimes|string|min:2|max:255',
             'apellido_materno' => 'nullable|string|max:255',
             'fecha_nacimiento' => 'nullable|date|before:today',
-            'telefono' => 'nullable|string|regex:/^\d{8}$/',
+            'telefono' => 'sometimes|string|regex:/^[67]\d{6,7}$/',
             'cargo' => 'sometimes|string|min:2|max:255',
             'username' => 'sometimes|string|min:3|max:255|unique:TUsuarios,username,' . $id . ',id_usuario',
             'password' => 'nullable|string|min:6',
@@ -157,9 +158,10 @@ class UsuarioController extends Controller
         ], [
             'ci.regex' => 'La cédula de identidad debe contener solo números',
             'ci.unique' => 'Esta cédula de identidad ya está registrada',
-            'ci.min' => 'La cédula debe tener al menos 5 dígitos',
-            'ci.max' => 'La cédula debe tener máximo 9 dígitos',
-            'telefono.regex' => 'El teléfono debe tener 8 dígitos',
+            'ci.min' => 'La cédula debe tener 7 u 8 dígitos',
+            'ci.max' => 'La cédula debe tener 7 u 8 dígitos',
+            'telefono.regex' => 'Debe empezar con 6 o 7 y tener 7 u 8 dígitos',
+            'telefono.required' => 'El teléfono es requerido',
             'fecha_nacimiento.before' => 'La fecha de nacimiento no puede ser futura',
             'primer_nombre.min' => 'El primer nombre debe tener al menos 2 caracteres',
             'apellido_paterno.min' => 'El apellido paterno debe tener al menos 2 caracteres',
