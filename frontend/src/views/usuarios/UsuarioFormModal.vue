@@ -9,7 +9,7 @@ const props = defineProps({
   roles: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['cerrar', 'guardado'])
+const emit = defineEmits(['cerrar'])
 
 const store = useUsuariosStore()
 const auth = useAuthStore()
@@ -19,17 +19,6 @@ const mensajeError = ref('')
 const mostrarHorario = ref(false)
 const horarioGuardado = ref(false)
 const esAdmin = computed(() => auth.tieneRol(1))
-const hoy = new Date().toISOString().split('T')[0]
-
-const cargos = [
-  'Mecánico',
-  'Recepcionista',
-  'Recepcionista/Cajero',
-  'Cajero',
-  'Administrador',
-  'Limpieza',
-  'Seguridad',
-]
 
 function obtenerRolesUsuario() {
   if (!props.usuario?.roles) return []
@@ -71,28 +60,6 @@ function limpiarErrores() {
   }
 }
 
-const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/
-
-function validarCampoNombre(campo, requerido) {
-  const val = form.value[campo]
-  if (!val) {
-    if (requerido) {
-      errores.value[campo] = 'Este campo es requerido'
-      return false
-    }
-    return true
-  }
-  if (!soloLetras.test(val)) {
-    errores.value[campo] = 'Solo se permiten letras, espacios y acentos'
-    return false
-  }
-  if (val.length < 2) {
-    errores.value[campo] = 'Mínimo 2 caracteres'
-    return false
-  }
-  return true
-}
-
 function validar() {
   let ok = true
   limpiarErrores()
@@ -108,61 +75,34 @@ function validar() {
     ok = false
   }
 
-  if (!validarCampoNombre('primer_nombre', true)) ok = false
-  if (!validarCampoNombre('segundo_nombre', false)) ok = false
-  if (!validarCampoNombre('apellido_paterno', true)) ok = false
-  if (!validarCampoNombre('apellido_materno', false)) ok = false
-
-  if (!form.value.fecha_nacimiento) {
-    errores.value.fecha_nacimiento = 'La fecha de nacimiento es requerida'
-    ok = false
-  } else {
-    const hoy = new Date()
-    const nacimiento = new Date(form.value.fecha_nacimiento)
-    let edad = hoy.getFullYear() - nacimiento.getFullYear()
-    const m = hoy.getMonth() - nacimiento.getMonth()
-    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--
-    if (edad < 18) {
-      errores.value.fecha_nacimiento = 'Debe ser mayor de 18 años'
-      ok = false
-    } else if (new Date(form.value.fecha_nacimiento) > new Date(hoy)) {
-      errores.value.fecha_nacimiento = 'La fecha de nacimiento no puede ser futura'
-      ok = false
-    } else if (edad > 100) {
-      errores.value.fecha_nacimiento = 'Fecha de nacimiento no válida'
-      ok = false
-    }
-  }
-
-  if (form.value.telefono && !/^[67]\d{7}$/.test(form.value.telefono)) {
-    errores.value.telefono = 'Debe tener 8 dígitos y comenzar con 6 o 7'
+  if (form.value.primer_nombre.length < 2) {
+    errores.value.primer_nombre = 'Mínimo 2 caracteres'
     ok = false
   }
 
-  if (!form.value.cargo) {
-    errores.value.cargo = 'El cargo es requerido'
-    ok = false
-  } else if (!cargos.includes(form.value.cargo)) {
-    errores.value.cargo = 'Seleccione un cargo válido'
+  if (form.value.apellido_paterno.length < 2) {
+    errores.value.apellido_paterno = 'Mínimo 2 caracteres'
     ok = false
   }
 
-  if (!form.value.username) {
-    errores.value.username = 'El usuario es requerido'
+  if (form.value.telefono && !/^\d{8}$/.test(form.value.telefono)) {
+    errores.value.telefono = 'Debe tener 8 dígitos'
     ok = false
-  } else if (form.value.username.length < 3) {
+  }
+
+  if (form.value.cargo.length < 2) {
+    errores.value.cargo = 'Mínimo 2 caracteres'
+    ok = false
+  }
+
+  if (form.value.username.length < 3) {
     errores.value.username = 'Mínimo 3 caracteres'
     ok = false
   }
 
-  if (!esEdicion.value) {
-    if (!form.value.password) {
-      errores.value.password = 'La contraseña es requerida'
-      ok = false
-    } else if (form.value.password.length < 6) {
-      errores.value.password = 'Mínimo 6 caracteres'
-      ok = false
-    }
+  if (!esEdicion.value && form.value.password.length < 6) {
+    errores.value.password = 'Mínimo 6 caracteres'
+    ok = false
   }
   if (esEdicion.value && form.value.password && form.value.password.length < 6) {
     errores.value.password = 'Mínimo 6 caracteres'
@@ -187,10 +127,8 @@ async function guardar() {
       const data = { ...form.value }
       if (!data.password) delete data.password
       await store.actualizar(props.usuario.id_usuario, data)
-      emit('guardado', 'actualizado')
     } else {
       await store.crear(form.value)
-      emit('guardado', 'creado')
     }
     emit('cerrar')
   } catch (err) {
@@ -202,14 +140,14 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay">
+  <div class="modal-overlay" @click.self="emit('cerrar')">
     <div class="modal-card">
       <div class="modal-header">
         <h2>{{ esEdicion ? 'Editar Usuario' : 'Nuevo Usuario' }}</h2>
         <button class="btn-cerrar" @click="emit('cerrar')">&times;</button>
       </div>
 
-      <form @submit.prevent="guardar" class="modal-form" novalidate>
+      <form @submit.prevent="guardar" class="modal-form">
         <p v-if="mensajeError" class="mensaje-error">{{ mensajeError }}</p>
 
         <fieldset>
@@ -217,45 +155,42 @@ async function guardar() {
           <div class="form-grid">
             <div class="campo" :class="{ 'has-error': errores.ci }">
               <label for="ci">C&eacute;dula de Identidad</label>
-              <input id="ci" v-model="form.ci" type="text" placeholder="Ej: 1234567" required />
+              <input id="ci" v-model="form.ci" type="text" required />
               <p v-if="errores.ci" class="field-error">{{ errores.ci }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.primer_nombre }">
               <label for="primer_nombre">Primer Nombre</label>
-              <input id="primer_nombre" v-model="form.primer_nombre" type="text" placeholder="Ej: Juan" required />
+              <input id="primer_nombre" v-model="form.primer_nombre" type="text" required />
               <p v-if="errores.primer_nombre" class="field-error">{{ errores.primer_nombre }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.segundo_nombre }">
               <label for="segundo_nombre">Segundo Nombre</label>
-              <input id="segundo_nombre" v-model="form.segundo_nombre" type="text" placeholder="Ej: Carlos" />
+              <input id="segundo_nombre" v-model="form.segundo_nombre" type="text" />
               <p v-if="errores.segundo_nombre" class="field-error">{{ errores.segundo_nombre }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.apellido_paterno }">
               <label for="apellido_paterno">Apellido Paterno</label>
-              <input id="apellido_paterno" v-model="form.apellido_paterno" type="text" placeholder="Ej: Pérez" required />
+              <input id="apellido_paterno" v-model="form.apellido_paterno" type="text" required />
               <p v-if="errores.apellido_paterno" class="field-error">{{ errores.apellido_paterno }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.apellido_materno }">
               <label for="apellido_materno">Apellido Materno</label>
-              <input id="apellido_materno" v-model="form.apellido_materno" type="text" placeholder="Ej: López" />
+              <input id="apellido_materno" v-model="form.apellido_materno" type="text" />
               <p v-if="errores.apellido_materno" class="field-error">{{ errores.apellido_materno }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.fecha_nacimiento }">
               <label for="fecha_nacimiento">Fecha de Nacimiento</label>
-              <input id="fecha_nacimiento" v-model="form.fecha_nacimiento" type="date" :max="hoy" />
+              <input id="fecha_nacimiento" v-model="form.fecha_nacimiento" type="date" />
               <p v-if="errores.fecha_nacimiento" class="field-error">{{ errores.fecha_nacimiento }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.telefono }">
               <label for="telefono">Tel&eacute;fono</label>
-              <input id="telefono" v-model="form.telefono" type="text" placeholder="Ej: 71234567" />
+              <input id="telefono" v-model="form.telefono" type="text" />
               <p v-if="errores.telefono" class="field-error">{{ errores.telefono }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.cargo }">
               <label for="cargo">Cargo</label>
-              <select id="cargo" v-model="form.cargo" required>
-                <option value="" disabled>Seleccionar cargo...</option>
-                <option v-for="c in cargos" :key="c" :value="c">{{ c }}</option>
-              </select>
+              <input id="cargo" v-model="form.cargo" type="text" required />
               <p v-if="errores.cargo" class="field-error">{{ errores.cargo }}</p>
             </div>
             <div v-if="esAdmin" class="campo">
@@ -270,7 +205,7 @@ async function guardar() {
           <div class="form-grid">
             <div class="campo" :class="{ 'has-error': errores.username }">
               <label for="username">Usuario</label>
-              <input id="username" v-model="form.username" type="text" placeholder="Ej: jperez" required />
+              <input id="username" v-model="form.username" type="text" required />
               <p v-if="errores.username" class="field-error">{{ errores.username }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.password }">

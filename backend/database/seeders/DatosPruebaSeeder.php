@@ -52,7 +52,7 @@ class DatosPruebaSeeder extends Seeder
             ['id_rol' => 2, 'nombre' => 'Cajero', 'descripcion' => 'Gestion de ventas y caja', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
             ['id_rol' => 3, 'nombre' => 'Mecanico', 'descripcion' => 'Gestion de ordenes de trabajo', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
             ['id_rol' => 4, 'nombre' => 'Recepcionista', 'descripcion' => 'Registro y atencion de clientes', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
-            ['id_rol' => 5, 'nombre' => 'Almacenero', 'descripcion' => 'Gestion de inventario y almacen', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
+            ['id_rol' => 5, 'nombre' => 'Gerente', 'descripcion' => 'Supervision general del negocio', 'estadoA' => true, 'usuarioA' => null, 'fechahoraA' => $now],
         ]);
 
         // ===================== 2. TEmpleados =====================
@@ -65,8 +65,8 @@ class DatosPruebaSeeder extends Seeder
             ['id_empleado' => 6, 'ci' => '6789012', 'primer_nombre' => 'Laura', 'segundo_nombre' => 'Camila', 'apellido_paterno' => 'Morales', 'apellido_materno' => 'Pinto', 'fecha_nacimiento' => '1993-09-12', 'telefono' => '75678901', 'fecha_ingreso' => '2025-02-15', 'sueldo_base' => 2800, 'cargo' => 'Cajero'],
             ['id_empleado' => 7, 'ci' => '7890123', 'primer_nombre' => 'Sofia', 'segundo_nombre' => 'Valentina', 'apellido_paterno' => 'Copa', 'apellido_materno' => 'Quispe', 'fecha_nacimiento' => '1997-06-25', 'telefono' => '76789012', 'fecha_ingreso' => '2025-03-01', 'sueldo_base' => 2600, 'cargo' => 'Recepcionista'],
             ['id_empleado' => 8, 'ci' => '8901234', 'primer_nombre' => 'Diego', 'segundo_nombre' => 'Fernando', 'apellido_paterno' => 'Cruz', 'apellido_materno' => 'Mendoza', 'fecha_nacimiento' => '1991-12-08', 'telefono' => '77890123', 'fecha_ingreso' => '2025-04-10', 'sueldo_base' => 2600, 'cargo' => 'Recepcionista'],
-            ['id_empleado' => 9, 'ci' => '9012345', 'primer_nombre' => 'Roberto', 'segundo_nombre' => null, 'apellido_paterno' => 'Aguilar', 'apellido_materno' => 'Torres', 'fecha_nacimiento' => '1980-02-14', 'telefono' => '78901234', 'fecha_ingreso' => '2024-01-10', 'sueldo_base' => 6000, 'cargo' => 'Almacenero'],
-            ['id_empleado' => 10, 'ci' => '0123456', 'primer_nombre' => 'Carmen', 'segundo_nombre' => 'Rosa', 'apellido_paterno' => 'Vargas', 'apellido_materno' => 'Luna', 'fecha_nacimiento' => '1987-08-20', 'telefono' => '79012345', 'fecha_ingreso' => '2024-06-01', 'sueldo_base' => 5500, 'cargo' => 'Almacenero'],
+            ['id_empleado' => 9, 'ci' => '9012345', 'primer_nombre' => 'Roberto', 'segundo_nombre' => null, 'apellido_paterno' => 'Aguilar', 'apellido_materno' => 'Torres', 'fecha_nacimiento' => '1980-02-14', 'telefono' => '78901234', 'fecha_ingreso' => '2024-01-10', 'sueldo_base' => 6000, 'cargo' => 'Gerente'],
+            ['id_empleado' => 10, 'ci' => '0123456', 'primer_nombre' => 'Carmen', 'segundo_nombre' => 'Rosa', 'apellido_paterno' => 'Vargas', 'apellido_materno' => 'Luna', 'fecha_nacimiento' => '1987-08-20', 'telefono' => '79012345', 'fecha_ingreso' => '2024-06-01', 'sueldo_base' => 5500, 'cargo' => 'Gerente'],
         ];
         foreach ($empleados as $e) {
             $e['estadoA'] = true;
@@ -407,7 +407,7 @@ class DatosPruebaSeeder extends Seeder
             $progDiego[] = ['id_empleado' => 8, 'dia_semana' => $d, 'hora_entrada' => '09:00:00', 'hora_salida' => '18:00:00', 'activo' => true, 'estadoA' => true, 'usuarioA' => 1, 'fechahoraA' => $now];
         }
 
-        // Empleado 9: Roberto (Almacenero) — Lun-Vie 07:30-17:00
+        // Empleado 9: Roberto (Gerente) — Lun-Vie 07:30-17:00
         $progRoberto = [];
         for ($d = 1; $d <= 5; $d++) {
             $progRoberto[] = ['id_empleado' => 9, 'dia_semana' => $d, 'hora_entrada' => '07:30:00', 'hora_salida' => '17:00:00', 'activo' => true, 'estadoA' => true, 'usuarioA' => 1, 'fechahoraA' => $now];

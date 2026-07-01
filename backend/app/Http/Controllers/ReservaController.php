@@ -16,49 +16,24 @@ class ReservaController extends Controller
 
     public function index(Request $request)
     {
-        $canceladas = $request->boolean('canceladas');
-
         $query = Reserva::with('cliente', 'detalles.producto', 'envio')
-            ->orderBy($canceladas ? 'fechahoraA' : 'fecha_solicitud', 'desc')
+            ->where('estadoA', true)
+            ->orderBy('fecha_solicitud', 'desc')
             ->orderBy('id_reserva', 'desc');
 
-        if ($canceladas) {
-            $query->where('estadoA', false);
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
 
-            if ($request->filled('fecha_desde')) {
-                $query->where('fechahoraA', '>=', $request->fecha_desde . ' 00:00:00');
-            }
-            if ($request->filled('fecha_hasta')) {
-                $query->where('fechahoraA', '<=', $request->fecha_hasta . ' 23:59:59');
-            }
-
-            if ($request->filled('busqueda')) {
-                $q = $request->busqueda;
-                $query->where(function ($sub) use ($q) {
-                    $sub->whereHas('cliente', function ($c) use ($q) {
-                        $c->where('primer_nombre', 'like', "%{$q}%")
-                          ->orWhere('apellido_paterno', 'like', "%{$q}%")
-                          ->orWhere('ci', 'like', "%{$q}%");
-                    })->orWhere('id_reserva', $q);
-                });
-            }
-        } else {
-            $query->where('estadoA', true);
-
-            if ($request->filled('estado')) {
-                $query->where('estado', $request->estado);
-            }
-
-            if ($request->filled('busqueda')) {
-                $q = $request->busqueda;
-                $query->where(function ($sub) use ($q) {
-                    $sub->whereHas('cliente', function ($c) use ($q) {
-                        $c->where('primer_nombre', 'like', "%{$q}%")
-                          ->orWhere('apellido_paterno', 'like', "%{$q}%")
-                          ->orWhere('ci', 'like', "%{$q}%");
-                    })->orWhere('id_reserva', $q);
-                });
-            }
+        if ($request->filled('busqueda')) {
+            $q = $request->busqueda;
+            $query->where(function ($sub) use ($q) {
+                $sub->whereHas('cliente', function ($c) use ($q) {
+                    $c->where('primer_nombre', 'like', "%{$q}%")
+                      ->orWhere('apellido_paterno', 'like', "%{$q}%")
+                      ->orWhere('ci', 'like', "%{$q}%");
+                })->orWhere('id_reserva', $q);
+            });
         }
 
         $reservas = $query->get()->map(fn($r) => $this->formatearReserva($r));
@@ -76,15 +51,13 @@ class ReservaController extends Controller
     {
         $validated = $request->validate([
             'id_cliente' => 'required|exists:TClientes,id_cliente',
-            'monto_adelanto' => 'required|numeric|min:0.01',
+            'monto_adelanto' => 'nullable|numeric|min:0',
             'adelanto_metodo_pago' => 'nullable|required_with:monto_adelanto|in:QR,Efectivo',
-            'fecha_expiracion' => 'required|date|after_or_equal:today',
-            'departamento_origen' => 'required|string|max:255',
+            'fecha_expiracion' => 'nullable|date|after_or_equal:today',
+            'departamento_origen' => 'nullable|string|max:255',
             'detalles' => 'required|array|min:1',
             'detalles.*.id_producto' => 'required|exists:TProductos,id_producto',
             'detalles.*.cantidad' => 'required|integer|min:1',
-        ], [
-            'fecha_expiracion.after_or_equal' => 'La fecha de expiración debe ser hoy o una fecha futura.',
         ]);
 
         $usuarioId = auth()->id();
@@ -421,7 +394,6 @@ class ReservaController extends Controller
             'fecha_expiracion' => $reserva->fecha_expiracion,
             'estado' => $reserva->estado,
             'departamento_origen' => $reserva->departamento_origen,
-            'fechahoraA' => $reserva->fechahoraA?->toDateTimeString(),
             'detalles' => $reserva->detalles->map(fn($d) => [
                 'id_detalle_reserva' => $d->id_detalle_reserva,
                 'id_producto' => $d->id_producto,

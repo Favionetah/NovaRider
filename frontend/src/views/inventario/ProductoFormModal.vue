@@ -205,7 +205,7 @@ async function guardar() {
             </div>
             <div class="precios-grid">
               <div class="form-group">
-                <label for="precio_venta">Precio de Venta (Bs)</label>
+                <label for="precio_venta">Precio de Venta (S/)</label>
                 <input
                   id="precio_venta"
                   v-model="form.precio_venta"
@@ -218,7 +218,7 @@ async function guardar() {
               </div>
 
               <div class="form-group">
-                <label for="costo">Costo (Bs)</label>
+                <label for="costo">Costo (S/)</label>
                 <input
                   id="costo"
                   v-model="form.costo"
@@ -235,13 +235,13 @@ async function guardar() {
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
                 <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
-              <span>&Uacute;ltimo costo de compra registrado: <strong>Bs {{ Number(props.producto.ultimo_costo_compra).toFixed(2) }}</strong></span>
+              <span>&Uacute;ltimo costo de compra registrado: <strong>S/ {{ Number(props.producto.ultimo_costo_compra).toFixed(2) }}</strong></span>
             </div>
 
             <div class="margen-info">
               <span class="margen-label">Margen de ganancia:</span>
               <span class="margen-valor" :class="{ positivo: margenNeto > 0, negativo: margenNeto < 0, cero: margenNeto === 0 }">
-                Bs {{ margenNeto.toFixed(2) }}
+                S/ {{ margenNeto.toFixed(2) }}
                 <span v-if="margenPorcentaje !== null" class="margen-porcentaje">
                   ({{ margenPorcentaje >= 0 ? '+' : '' }}{{ margenPorcentaje.toFixed(1) }}%)
                 </span>

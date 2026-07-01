@@ -4,9 +4,7 @@ import api from '@/services/api'
 
 export const useReservasStore = defineStore('reservas', () => {
   const items = ref([])
-  const itemsCanceladas = ref([])
   const loading = ref(false)
-  const loadingCanceladas = ref(false)
   const error = ref(null)
 
   async function listar(params = {}) {
@@ -19,19 +17,6 @@ export const useReservasStore = defineStore('reservas', () => {
       error.value = err.response?.data?.message || 'Error al cargar reservas'
     } finally {
       loading.value = false
-    }
-  }
-
-  async function listarCanceladas(params = {}) {
-    loadingCanceladas.value = true
-    error.value = null
-    try {
-      const res = await api.get('/reservas', { params: { canceladas: 1, ...params } })
-      itemsCanceladas.value = res.data.reservas
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Error al cargar reservas canceladas'
-    } finally {
-      loadingCanceladas.value = false
     }
   }
 
@@ -68,5 +53,5 @@ export const useReservasStore = defineStore('reservas', () => {
     return res.data
   }
 
-  return { items, itemsCanceladas, loading, loadingCanceladas, error, listar, listarCanceladas, crear, actualizar, cancelar, convertirVenta, registrarEnvio }
+  return { items, loading, error, listar, crear, actualizar, cancelar, convertirVenta, registrarEnvio }
 })

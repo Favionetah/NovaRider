@@ -3,7 +3,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useReservasStore } from '@/stores/reservas'
 import api from '@/services/api'
 
-const emit = defineEmits(['cerrar', 'guardado'])
+const emit = defineEmits(['cerrar'])
 
 const store = useReservasStore()
 
@@ -12,36 +12,6 @@ const productos = ref([])
 const guardando = ref(false)
 const errorGeneral = ref('')
 const errores = ref({})
-
-const busquedaCliente = ref('')
-const mostrarDropdown = ref(false)
-const clienteSeleccionado = ref(null)
-
-const departamentos = ['Beni', 'Chuquisaca', 'Cochabamba', 'La Paz', 'Oruro', 'Pando', 'Potosí', 'Santa Cruz', 'Tarija']
-
-const clientesFiltrados = computed(() => {
-  if (!busquedaCliente.value) return []
-  const q = busquedaCliente.value.toLowerCase()
-  const filtrados = clientes.value.filter(c => {
-    const nombre = nombreCliente(c).toLowerCase()
-    return nombre.includes(q) || (c.ci && c.ci.includes(q))
-  })
-  return filtrados.slice(0, 30)
-})
-
-function seleccionarCliente(cliente) {
-  clienteSeleccionado.value = cliente
-  form.value.id_cliente = cliente.id_cliente
-  busquedaCliente.value = nombreCliente(cliente) + (cliente.ci ? ` (${cliente.ci})` : '')
-  mostrarDropdown.value = false
-}
-
-function limpiarCliente() {
-  clienteSeleccionado.value = null
-  form.value.id_cliente = ''
-  busquedaCliente.value = ''
-  mostrarDropdown.value = false
-}
 
 const form = ref({
   id_cliente: '',
@@ -98,39 +68,13 @@ function nombreCliente(c) {
     .filter(Boolean).join(' ')
 }
 
-function validar() {
-  const errs = {}
-  if (!form.value.id_cliente) errs.id_cliente = ['Debe seleccionar un cliente']
-  if (!form.value.fecha_expiracion) errs.fecha_expiracion = ['La fecha de expiración es obligatoria']
-  if (!form.value.departamento_origen) errs.departamento_origen = ['Debe seleccionar un departamento de origen']
-  if (!form.value.monto_adelanto || form.value.monto_adelanto <= 0) errs.monto_adelanto = ['El adelanto debe ser mayor a 0']
-  if (form.value.monto_adelanto > 0 && !form.value.adelanto_metodo_pago) errs.adelanto_metodo_pago = ['Debe seleccionar un método de pago']
-  if (form.value.detalles.length === 0) {
-    errs.detalles = ['Debe agregar al menos un producto']
-  } else {
-    form.value.detalles.forEach((d, i) => {
-      if (!d.id_producto) errs[`detalles.${i}.id_producto`] = ['Seleccione un producto']
-      if (!d.cantidad || d.cantidad < 1) errs[`detalles.${i}.cantidad`] = ['Ingrese una cantidad válida']
-    })
-  }
-  return errs
-}
-
 async function guardar() {
+  guardando.value = true
   errores.value = {}
   errorGeneral.value = ''
 
-  const errs = validar()
-  if (Object.keys(errs).length > 0) {
-    errores.value = errs
-    return
-  }
-
-  guardando.value = true
-
   try {
     await store.crear(form.value)
-    emit('guardado')
     cerrar()
   } catch (err) {
     const data = err.response?.data
@@ -146,7 +90,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay">
+  <div class="modal-overlay" @click.self="cerrar">
     <div class="modal-card">
       <div class="modal-header">
         <h2>Nueva Reserva</h2>
@@ -157,78 +101,54 @@ async function guardar() {
 
       <form @submit.prevent="guardar" class="modal-body">
         <div class="form-grid">
-          <div class="form-group form-group-full">
-            <label for="buscar_cliente">Cliente <span class="required">*</span></label>
-            <div class="cliente-buscador">
-              <input
-                id="buscar_cliente"
-                v-model="busquedaCliente"
-                type="text"
-                placeholder="Buscar cliente por nombre o CI..."
-                :class="{ 'input-error': errores.id_cliente }"
-                @input="mostrarDropdown = true"
-                @focus="mostrarDropdown = true"
-                @blur="setTimeout(() => mostrarDropdown = false, 200)"
-              />
-              <button v-if="form.id_cliente" type="button" class="btn-limpiar-cliente" @click="limpiarCliente">&times;</button>
-              <div v-if="mostrarDropdown && clientesFiltrados.length > 0" class="cliente-dropdown">
-                <div
-                  v-for="c in clientesFiltrados"
-                  :key="c.id_cliente"
-                  class="cliente-option"
-                  @mousedown.prevent="seleccionarCliente(c)"
-                >
-                  {{ nombreCliente(c) }}
-                  <span v-if="c.ci" class="cliente-ci">{{ c.ci }}</span>
-                </div>
-              </div>
-              <div v-if="mostrarDropdown && busquedaCliente && clientesFiltrados.length === 0" class="cliente-dropdown">
-                <div class="cliente-option sin-resultados">Sin resultados</div>
-              </div>
-            </div>
+          <div class="form-group">
+            <label for="cliente">Cliente <span class="required">*</span></label>
+            <select
+              id="cliente"
+              v-model="form.id_cliente"
+              :class="{ 'input-error': errores.id_cliente }"
+            >
+              <option value="">Seleccionar cliente...</option>
+              <option v-for="c in clientes" :key="c.id_cliente" :value="c.id_cliente">
+                {{ nombreCliente(c) }} {{ c.ci ? `(${c.ci})` : '' }}
+              </option>
+            </select>
             <span v-if="errores.id_cliente" class="error-text">{{ errores.id_cliente[0] }}</span>
           </div>
 
           <div class="form-group">
-            <label for="fecha_exp">Fecha expiración <span class="required">*</span></label>
+            <label for="fecha_exp">Fecha expiración</label>
             <input
               id="fecha_exp"
               v-model="form.fecha_expiracion"
               type="date"
-              :class="{ 'input-error': errores.fecha_expiracion }"
             />
-            <span v-if="errores.fecha_expiracion" class="error-text">{{ errores.fecha_expiracion[0] }}</span>
           </div>
 
           <div class="form-group">
-            <label for="dep_origen">Departamento origen <span class="required">*</span></label>
-            <select
+            <label for="dep_origen">Departamento origen</label>
+            <input
               id="dep_origen"
               v-model="form.departamento_origen"
-              :class="{ 'input-error': errores.departamento_origen }"
-            >
-              <option value="">Seleccionar...</option>
-              <option v-for="dep in departamentos" :key="dep" :value="dep">{{ dep }}</option>
-            </select>
-            <span v-if="errores.departamento_origen" class="error-text">{{ errores.departamento_origen[0] }}</span>
+              type="text"
+              placeholder="Ej: Santa Cruz"
+            />
           </div>
 
           <div class="form-group">
-            <label for="monto_adelanto">Adelanto (Bs) <span class="required">*</span></label>
+            <label for="monto_adelanto">Monto adelanto</label>
             <input
               id="monto_adelanto"
               v-model.number="form.monto_adelanto"
               type="number"
-              min="0.01"
+              min="0"
               step="0.01"
-              placeholder="0.01"
-              :class="{ 'input-error': errores.monto_adelanto }"
+              placeholder="0"
             />
-            <span v-if="errores.monto_adelanto" class="error-text">{{ errores.monto_adelanto[0] }}</span>
           </div>
 
           <div v-if="form.monto_adelanto > 0" class="form-group">
-            <label for="met_pago">Método de pago <span class="required">*</span></label>
+            <label for="met_pago">Método pago adelanto <span class="required">*</span></label>
             <select
               id="met_pago"
               v-model="form.adelanto_metodo_pago"
@@ -270,9 +190,6 @@ async function guardar() {
                     {{ p.nombre }} (stock: {{ p.stock_disponible }})
                   </option>
                 </select>
-                <span v-if="errores[`detalles.${i}.id_producto`]" class="error-text">
-                  {{ errores[`detalles.${i}.id_producto`][0] }}
-                </span>
               </div>
               <div class="detalle-campo detalle-cant">
                 <label>Cantidad <span class="required">*</span></label>
@@ -283,14 +200,11 @@ async function guardar() {
                   :max="productos.find(p => p.id_producto === det.id_producto)?.stock_disponible || 1"
                   :class="{ 'input-error': errores[`detalles.${i}.cantidad`] }"
                 />
-                <span v-if="errores[`detalles.${i}.cantidad`]" class="error-text">
-                  {{ errores[`detalles.${i}.cantidad`][0] }}
-                </span>
               </div>
               <div class="detalle-campo detalle-precio-info">
                 <label>Precio U.</label>
                 <span class="precio-info">
-                  Bs {{ (productos.find(p => p.id_producto === det.id_producto)?.precio_venta || 0).toFixed(2) }}
+                  ${{ (productos.find(p => p.id_producto === det.id_producto)?.precio_venta || 0).toFixed(2) }}
                 </span>
               </div>
               <button type="button" class="btn-quitar" @click="quitarFila(i)" title="Quitar">&times;</button>
@@ -299,7 +213,7 @@ async function guardar() {
 
           <div class="total-section">
             <span class="total-label">Total estimado:</span>
-            <span class="total-valor">Bs {{ totalEstimado.toFixed(2) }}</span>
+            <span class="total-valor">${{ totalEstimado.toFixed(2) }}</span>
           </div>
         </div>
 
@@ -506,68 +420,6 @@ async function guardar() {
   font-size: 14px;
   font-weight: 600;
   color: #042D29;
-}
-
-.cliente-buscador {
-  position: relative;
-}
-
-.cliente-buscador input {
-  padding-right: 36px;
-}
-
-.btn-limpiar-cliente {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: #929079;
-  cursor: pointer;
-  padding: 4px;
-  line-height: 1;
-}
-
-.btn-limpiar-cliente:hover { color: #741102; }
-
-.cliente-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  background: #FFFFFF;
-  border: 1.5px solid #D1D5DB;
-  border-radius: 10px;
-  margin-top: 4px;
-  max-height: 240px;
-  overflow-y: auto;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-.cliente-option {
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #1F2937;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.cliente-option:hover { background: rgba(4, 45, 41, 0.06); }
-
-.cliente-ci {
-  font-size: 12px;
-  color: #929079;
-}
-
-.sin-resultados {
-  color: #929079;
-  cursor: default;
 }
 
 .btn-quitar {

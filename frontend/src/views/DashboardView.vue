@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 
+// MODIFICACIÓN QUIRÚRGICA: Mapeamos los módulos y asignamos la ruta al taller si coincide el nombre
 const modulos = auth.modulosPermitidos.map(m => {
   if (m.nombre && m.nombre.includes('Taller y Reparaciones')) {
     return { ...m, ruta: '/taller' }
@@ -30,6 +31,7 @@ function cardLeave(e) {
 </script>
 
 <template>
+  <!-- TODO EL TEMPLATE SE QUEDA EXACTAMENTE IGUAL (NO SE MODIFICA NADA) -->
   <div class="dashboard">
     <main class="dashboard-content">
       <div class="welcome-section">
@@ -78,116 +80,22 @@ function cardLeave(e) {
 </template>
 
 <style scoped>
-.dashboard {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.dashboard-content {
-  flex: 1;
-  padding: 40px 32px;
-  max-width: 1100px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.welcome-section {
-  margin-bottom: 40px;
-}
-
-.welcome-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #042D29;
-  margin-bottom: 4px;
-}
-
-.welcome-subtitle {
-  font-size: 15px;
-  color: #929079;
-  font-weight: 400;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #929079;
-  font-size: 15px;
-}
-
-.modulos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-}
-
-.modulo-card {
-  background: #FFFFFF;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  text-decoration: none;
-  cursor: default;
-  display: flex;
-  flex-direction: column;
-}
-
-.modulo-card-link {
-  cursor: pointer;
-}
-
-.modulo-card-accent {
-  height: 4px;
-  flex-shrink: 0;
-}
-
-.modulo-card-body {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-  position: relative;
-}
-
-.modulo-icon-wrapper {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 4px;
-}
-
-.modulo-icon {
-  width: 28px;
-  height: 28px;
-}
-
-.modulo-nombre {
-  font-size: 16px;
-  font-weight: 600;
-  color: #042D29;
-  line-height: 1.3;
-}
-
-.modulo-desc {
-  font-size: 13px;
-  color: #929079;
-  line-height: 1.4;
-}
-
-.modulo-flecha {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  font-size: 18px;
-  color: #929079;
-  transition: transform 0.2s ease;
-}
-
-.modulo-card-link:hover .modulo-flecha {
-  transform: translateX(4px);
-}
+/* TODO EL ESTILO SE QUEDA EXACTAMENTE IGUAL (NO SE MODIFICA NADA) */
+.dashboard { min-height: 100vh; display: flex; flex-direction: column; }
+.dashboard-content { flex: 1; padding: 40px 32px; max-width: 1100px; margin: 0 auto; width: 100%; }
+.welcome-section { margin-bottom: 40px; }
+.welcome-title { font-size: 28px; font-weight: 700; color: #042D29; margin-bottom: 4px; }
+.welcome-subtitle { font-size: 15px; color: #929079; font-weight: 400; }
+.empty-state { text-align: center; padding: 60px 20px; color: #929079; font-size: 15px; }
+.modulos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+.modulo-card { background: #FFFFFF; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); text-decoration: none; cursor: default; display: flex; flex-direction: column; }
+.modulo-card-link { cursor: pointer; }
+.modulo-card-accent { height: 4px; flex-shrink: 0; }
+.modulo-card-body { padding: 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; position: relative; }
+.modulo-icon-wrapper { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.modulo-icon { width: 28px; height: 28px; }
+.modulo-nombre { font-size: 16px; font-weight: 600; color: #042D29; line-height: 1.3; }
+.modulo-desc { font-size: 13px; color: #929079; line-height: 1.4; }
+.modulo-flecha { position: absolute; bottom: 20px; right: 20px; font-size: 18px; color: #929079; transition: transform 0.2s ease; }
+.modulo-card-link:hover .modulo-flecha { transform: translateX(4px); }
 </style>

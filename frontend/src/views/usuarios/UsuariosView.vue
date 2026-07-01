@@ -1,38 +1,30 @@
-﻿<script setup>
+<script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUsuariosStore } from '@/stores/usuarios'
-import { useToastStore } from '@/stores/toast'
 import UsuarioFormModal from './UsuarioFormModal.vue'
 import ConfirmarEliminacion from './ConfirmarEliminacion.vue'
-import ProgramacionModal from './ProgramacionModal.vue'
 
 const router = useRouter()
 const store = useUsuariosStore()
-const toast = useToastStore()
 
 const tabActivo = ref('activos')
 const busqueda = ref('')
 const filtroRol = ref('')
 const stats = ref({ total: 0, activos: 0, turnos_hoy: 0 })
-let timeoutBusqueda = null
 
 async function cargarStats() {
   try {
     const { default: api } = await import('@/services/api')
-    const [resTurnos, resActivos, resInactivos] = await Promise.all([
-      api.get('/turnos', { params: { fecha: new Date().toISOString().split('T')[0] } }),
-      api.get('/usuarios', { params: { per_page: 1 } }),
-      api.get('/usuarios', { params: { inactivos: 1, per_page: 1 } }),
-    ])
-    stats.value.turnos_hoy = resTurnos.data.turnos.length
-    stats.value.activos = resActivos.data.pagination.total
-    stats.value.total = resActivos.data.pagination.total + resInactivos.data.pagination.total
+    const res = await api.get('/turnos', { params: { fecha: new Date().toISOString().split('T')[0] } })
+    stats.value.turnos_hoy = res.data.turnos.length
   } catch { /* ignore */ }
+  stats.value.activos = store.usuarios.length
+  stats.value.total = store.usuarios.length + store.usuariosInactivos.length
 }
 
 onMounted(async () => {
-  await Promise.all([store.listar(), store.listarInactivos(), store.obtenerRoles()])
+  await Promise.all([store.listar(), store.listarInactivos()])
   await cargarStats()
   await nextTick()
   animarEntrada()
@@ -41,64 +33,46 @@ onMounted(async () => {
 watch(tabActivo, async () => {
   busqueda.value = ''
   filtroRol.value = ''
-  store.setBusqueda('', '')
-  const fn = tabActivo.value === 'activos' ? store.listar(1) : store.listarInactivos(1)
-  await fn
   await nextTick()
   animarEntrada()
-})
-
-watch(filtroRol, (val) => {
-  store.setBusqueda(busqueda.value, val)
-  if (tabActivo.value === 'activos') store.listar(1)
-})
-
-watch(busqueda, (val) => {
-  clearTimeout(timeoutBusqueda)
-  timeoutBusqueda = setTimeout(async () => {
-    store.setBusqueda(val, filtroRol.value)
-    if (tabActivo.value === 'activos') {
-      await store.listar(1)
-    } else {
-      await store.listarInactivos(1)
-    }
-  }, 300)
 })
 
 function animarEntrada() {
   gsap.fromTo('.page-header', { y: -15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out' })
   gsap.fromTo('.stats-grid', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.08 })
   gsap.fromTo('.tabla-wrapper', { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.15 })
-  gsap.from('.tabla-usuarios tbody tr', { y: 10, opacity: 0, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
+  gsap.fromTo('.tabla-usuarios tbody tr', { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, stagger: 0.04, ease: 'power2.out', delay: 0.2 })
 }
 
 function irADetalle(id) {
   router.push(`/usuarios/${id}`)
 }
 
-const paginaActual = computed(() => store.paginacion.current_page)
-const ultimaPagina = computed(() => store.paginacion.last_page)
-
-const paginasVisibles = computed(() => {
-  const actual = paginaActual.value
-  const ultima = ultimaPagina.value
-  const rango = 2
-  let inicio = Math.max(1, actual - rango)
-  let fin = Math.min(ultima, actual + rango)
-  const paginas = []
-  for (let i = inicio; i <= fin; i++) {
-    paginas.push(i)
+const usuariosFiltrados = computed(() => {
+  let lista = store.usuarios
+  if (filtroRol.value) {
+    lista = lista.filter(u => u.roles?.some(r => r.id_rol === Number(filtroRol.value)))
   }
-  return paginas
+  if (busqueda.value) {
+    const q = busqueda.value.toLowerCase()
+    lista = lista.filter(u =>
+      u.nombre_completo?.toLowerCase().includes(q) ||
+      u.username?.toLowerCase().includes(q) ||
+      u.ci?.toLowerCase().includes(q)
+    )
+  }
+  return lista
 })
 
-function cambiarPagina(page) {
-  if (tabActivo.value === 'activos') {
-    store.listar(page)
-  } else {
-    store.listarInactivos(page)
-  }
-}
+const inactivosFiltrados = computed(() => {
+  if (!busqueda.value) return store.usuariosInactivos
+  const q = busqueda.value.toLowerCase()
+  return store.usuariosInactivos.filter(u =>
+    u.nombre_completo?.toLowerCase().includes(q) ||
+    u.username?.toLowerCase().includes(q) ||
+    u.ci?.toLowerCase().includes(q)
+  )
+})
 
 const usuarioEditando = ref(null)
 const mostrarForm = ref(false)
@@ -130,14 +104,8 @@ function confirmarEliminar(usuario) {
 
 async function eliminarUsuario() {
   await store.eliminar(usuarioEliminar.value.id_usuario)
-  toast.show('Usuario desactivado correctamente', 'success')
   mostrarConfirmacion.value = false
   usuarioEliminar.value = null
-}
-
-async function reactivarUsuario(id) {
-  await store.reactivar(id)
-  toast.show('Usuario reactivado correctamente', 'success')
 }
 
 function cancelarEliminar() {
@@ -145,23 +113,8 @@ function cancelarEliminar() {
   usuarioEliminar.value = null
 }
 
-const mostrarHorario = ref(false)
-const usuarioHorario = ref(null)
-const horarioGuardado = ref(false)
-
-function abrirHorario(usuario) {
-  usuarioHorario.value = usuario
-  mostrarHorario.value = true
-}
-
-function cerrarHorario() {
-  mostrarHorario.value = false
-  usuarioHorario.value = null
-}
-
-function onHorarioGuardado() {
-  horarioGuardado.value = true
-  cerrarHorario()
+async function reactivarUsuario(id) {
+  await store.reactivar(id)
 }
 
 function exportarPdf() {
@@ -296,14 +249,14 @@ function exportarPdf() {
             </tr>
           </thead>
           <tbody v-if="tabActivo === 'activos'">
-            <tr v-for="u in store.usuarios" :key="u.id_usuario">
+            <tr v-for="u in usuariosFiltrados" :key="u.id_usuario">
               <td class="col-id">{{ u.id_usuario }}</td>
               <td class="col-emp">
                 <span class="emp-nombre enlace" @click="irADetalle(u.id_usuario)">{{ u.nombre_completo }}</span>
                 <span class="emp-cargo">{{ u.cargo }}</span>
               </td>
               <td class="col-user">{{ u.username }}</td>
-              <td class="col-ci">{{ u.ci || 'â€”' }}</td>
+              <td class="col-ci">{{ u.ci || '—' }}</td>
               <td class="col-rol">
                 <div class="roles-wrap">
                   <span
@@ -317,12 +270,6 @@ function exportarPdf() {
                 </div>
               </td>
               <td class="col-acc">
-                <button class="btn-accion btn-horario" @click="abrirHorario(u)" title="Horario">
-                  <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
-                    <polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                  </svg>
-                </button>
                 <button class="btn-accion btn-editar" @click="editarUsuario(u)" title="Editar">
                   <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
@@ -335,21 +282,21 @@ function exportarPdf() {
                 </button>
               </td>
             </tr>
-            <tr v-if="store.usuarios.length === 0 && !store.loading">
+            <tr v-if="usuariosFiltrados.length === 0">
               <td colspan="6" class="sin-datos">
                 {{ busqueda || filtroRol ? 'No se encontraron usuarios con esos filtros' : 'No hay usuarios activos registrados' }}
               </td>
             </tr>
           </tbody>
           <tbody v-else>
-            <tr v-for="u in store.usuariosInactivos" :key="u.id_usuario">
+            <tr v-for="u in inactivosFiltrados" :key="u.id_usuario">
               <td class="col-id">{{ u.id_usuario }}</td>
               <td class="col-emp">
                 <span class="emp-nombre">{{ u.nombre_completo }}</span>
                 <span class="emp-cargo">{{ u.cargo }}</span>
               </td>
               <td class="col-user">{{ u.username }}</td>
-              <td class="col-ci">{{ u.ci || 'â€”' }}</td>
+              <td class="col-ci">{{ u.ci || '—' }}</td>
               <td class="col-rol">
                 <span class="badge-rol inactivo">Inactivo</span>
               </td>
@@ -363,43 +310,13 @@ function exportarPdf() {
                 </button>
               </td>
             </tr>
-            <tr v-if="store.usuariosInactivos.length === 0 && !store.loading">
+            <tr v-if="inactivosFiltrados.length === 0">
               <td colspan="6" class="sin-datos">
                 {{ busqueda ? 'No se encontraron usuarios inactivos con ese criterio' : 'No hay usuarios inactivos' }}
               </td>
             </tr>
           </tbody>
         </table>
-
-        <div v-if="store.paginacion.last_page > 1" class="paginacion">
-          <button
-            class="btn-page"
-            :disabled="store.paginacion.current_page <= 1"
-            @click="cambiarPagina(store.paginacion.current_page - 1)"
-          >
-            &laquo; Anterior
-          </button>
-          <button
-            v-for="p in paginasVisibles"
-            :key="p"
-            class="btn-page"
-            :class="{ active: p === store.paginacion.current_page }"
-            @click="cambiarPagina(p)"
-          >
-            {{ p }}
-          </button>
-          <button
-            class="btn-page"
-            :disabled="store.paginacion.current_page >= store.paginacion.last_page"
-            @click="cambiarPagina(store.paginacion.current_page + 1)"
-          >
-            Siguiente &raquo;
-          </button>
-          <span class="page-info">
-            P&aacute;gina {{ store.paginacion.current_page }} de {{ store.paginacion.last_page }}
-            ({{ store.paginacion.total }} registros)
-          </span>
-        </div>
       </div>
     </div>
 
@@ -408,11 +325,6 @@ function exportarPdf() {
       :usuario="usuarioEditando"
       :roles="store.roles"
       @cerrar="cerrarFormulario"
-      @guardado="async (tipo) => {
-        toast.show(tipo === 'creado' ? 'Usuario creado correctamente' : 'Usuario actualizado correctamente', 'success')
-        await store.listar(1)
-        await store.listarInactivos()
-      }"
     />
 
     <ConfirmarEliminacion
@@ -421,16 +333,6 @@ function exportarPdf() {
       @confirmar="eliminarUsuario"
       @cancelar="cancelarEliminar"
     />
-
-    <Teleport to="body">
-      <ProgramacionModal
-        v-if="mostrarHorario"
-        :id-empleado="usuarioHorario?.id_usuario"
-        :horario-actual="[]"
-        @cerrar="cerrarHorario"
-        @guardado="onHorarioGuardado"
-      />
-    </Teleport>
   </div>
 </template>
 
@@ -489,7 +391,7 @@ function exportarPdf() {
   margin-bottom: 16px;
 }
 
-/* â”€â”€ Card â”€â”€ */
+/* ── Card ── */
 .content-card {
   background: #FFFFFF;
   border-radius: 16px;
@@ -499,7 +401,7 @@ function exportarPdf() {
   border-image: linear-gradient(90deg, #042D29, #741102) 1;
 }
 
-/* â”€â”€ Tabs â”€â”€ */
+/* ── Tabs ── */
 .tabs {
   display: flex;
   border-bottom: 1px solid #E5E7EB;
@@ -555,7 +457,7 @@ function exportarPdf() {
   color: #929079;
 }
 
-/* â”€â”€ Toolbar â”€â”€ */
+/* ── Toolbar ── */
 .toolbar {
   display: flex;
   gap: 12px;
@@ -648,7 +550,7 @@ function exportarPdf() {
   height: 18px;
 }
 
-/* â”€â”€ Loading â”€â”€ */
+/* ── Loading ── */
 .cargando {
   text-align: center;
   color: #929079;
@@ -656,7 +558,7 @@ function exportarPdf() {
   font-size: 14px;
 }
 
-/* â”€â”€ Table â”€â”€ */
+/* ── Table ── */
 .tabla-wrapper {
   overflow-x: auto;
 }
@@ -703,7 +605,7 @@ function exportarPdf() {
 .col-user { min-width: 120px; }
 .col-ci { min-width: 130px; }
 .col-rol { min-width: 140px; }
-.col-acc { width: 140px; }
+.col-acc { width: 100px; text-align: right; }
 
 .emp-nombre {
   display: block;
@@ -738,7 +640,13 @@ function exportarPdf() {
   gap: 4px;
 }
 
-/* â”€â”€ Action buttons â”€â”€ */
+/* ── Action buttons ── */
+.col-acc {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
 .btn-accion {
   display: inline-flex;
   align-items: center;
@@ -785,15 +693,6 @@ function exportarPdf() {
 
 .btn-reactivar:hover {
   background: rgba(4, 45, 41, 0.1);
-}
-
-.btn-horario {
-  color: #5C5B4E;
-}
-
-.btn-horario:hover {
-  border-color: #5C5B4E;
-  background: rgba(146, 144, 121, 0.1);
 }
 
 .stats-grid {
@@ -860,7 +759,8 @@ function exportarPdf() {
   color: #741102;
 }
 
-.page-header, .stats-grid, .tabla-wrapper {
+.page-header, .stats-grid, .tabla-wrapper,
+.tabla-usuarios tbody tr {
   opacity: 0;
 }
 
@@ -870,51 +770,4 @@ function exportarPdf() {
   padding: 40px;
   font-size: 14px;
 }
-
-.paginacion {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 16px 24px;
-  border-top: 1px solid #F3F4F6;
-  flex-wrap: wrap;
-}
-
-.btn-page {
-  padding: 6px 12px;
-  border: 1.5px solid #D1D5DB;
-  border-radius: 8px;
-  background: #FFFFFF;
-  color: #1F2937;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-page:hover:not(:disabled) {
-  border-color: #042D29;
-  color: #042D29;
-}
-
-.btn-page.active {
-  background: #042D29;
-  color: #FFFFFF;
-  border-color: #042D29;
-}
-
-.btn-page:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.page-info {
-  font-size: 12px;
-  color: #929079;
-  margin-left: 8px;
-}
 </style>
-
-
-

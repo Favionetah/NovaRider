@@ -141,7 +141,7 @@ class AuthController extends Controller
                 'nombre' => 'Gestión de Personal',
                 'descripcion' => 'Usuarios, turnos, planillas y sueldos',
                 'ruta' => '/usuarios',
-                'color' => '#042D29',
+                'color' => '#741102',
                 'roles_permitidos' => [1],
             ],
             [
@@ -166,7 +166,7 @@ class AuthController extends Controller
                 'descripcion' => 'Productos, repuestos y stock',
                 'ruta' => '/inventario',
                 'color' => '#042D29',
-                'roles_permitidos' => [1, 2, 5],
+                'roles_permitidos' => [1, 2],
             ],
             [
                 'id' => 'ventas',

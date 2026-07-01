@@ -8,24 +8,13 @@ export const useUsuariosStore = defineStore('usuarios', () => {
   const roles = ref([])
   const loading = ref(false)
   const error = ref(null)
-  const paginacion = ref({
-    current_page: 1,
-    last_page: 1,
-    per_page: 20,
-    total: 0,
-  })
 
-  const paramsBusqueda = ref({ busqueda: '', rol: '' })
-
-  async function listar(page = 1) {
+  async function listar() {
     loading.value = true
     error.value = null
     try {
-      const res = await api.get('/usuarios', {
-        params: { page, ...paramsBusqueda.value, per_page: 20 },
-      })
+      const res = await api.get('/usuarios')
       usuarios.value = res.data.usuarios
-      paginacion.value = res.data.pagination
     } catch (err) {
       error.value = err.response?.data?.message || 'Error al cargar usuarios'
     } finally {
@@ -33,24 +22,17 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     }
   }
 
-  async function listarInactivos(page = 1) {
+  async function listarInactivos() {
     loading.value = true
     error.value = null
     try {
-      const res = await api.get('/usuarios?inactivos=1', {
-        params: { page, busqueda: paramsBusqueda.value.busqueda, per_page: 20 },
-      })
+      const res = await api.get('/usuarios?inactivos=1')
       usuariosInactivos.value = res.data.usuarios
-      paginacion.value = res.data.pagination
     } catch (err) {
       error.value = err.response?.data?.message || 'Error al cargar usuarios inactivos'
     } finally {
       loading.value = false
     }
-  }
-
-  function setBusqueda(busqueda, rol) {
-    paramsBusqueda.value = { busqueda, rol }
   }
 
   async function obtenerRoles() {
@@ -64,7 +46,7 @@ export const useUsuariosStore = defineStore('usuarios', () => {
 
   async function crear(data) {
     const res = await api.post('/usuarios', data)
-    usuarios.value.unshift(res.data.usuario)
+    usuarios.value.push(res.data.usuario)
     return res.data
   }
 
@@ -96,8 +78,8 @@ export const useUsuariosStore = defineStore('usuarios', () => {
   }
 
   return {
-    usuarios, usuariosInactivos, roles, loading, error, paginacion,
-    listar, listarInactivos, obtenerRoles, setBusqueda,
+    usuarios, usuariosInactivos, roles, loading, error,
+    listar, listarInactivos, obtenerRoles,
     crear, actualizar, eliminar, reactivar,
   }
 })
