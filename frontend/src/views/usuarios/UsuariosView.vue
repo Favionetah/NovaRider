@@ -96,9 +96,22 @@ function cerrarFormulario() {
 
 const usuarioEliminar = ref(null)
 const mostrarConfirmacion = ref(false)
+const tieneOrdenesActivas = ref(null)
+const ordenesActivas = ref([])
 
-function confirmarEliminar(usuario) {
+async function confirmarEliminar(usuario) {
   usuarioEliminar.value = usuario
+  const esMecanico = usuario.roles?.some(r => r.id_rol === 3)
+
+  if (esMecanico) {
+    const data = await store.verificarOrdenesActivas(usuario.id_usuario)
+    tieneOrdenesActivas.value = data.tiene_ordenes
+    ordenesActivas.value = data.ordenes
+  } else {
+    tieneOrdenesActivas.value = null
+    ordenesActivas.value = []
+  }
+
   mostrarConfirmacion.value = true
 }
 
@@ -330,6 +343,8 @@ function exportarPdf() {
     <ConfirmarEliminacion
       v-if="mostrarConfirmacion"
       :usuario="usuarioEliminar"
+      :tiene-ordenes-activas="tieneOrdenesActivas"
+      :ordenes="ordenesActivas"
       @confirmar="eliminarUsuario"
       @cancelar="cancelarEliminar"
     />

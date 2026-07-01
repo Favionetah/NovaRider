@@ -35,6 +35,11 @@ export const useUsuariosStore = defineStore('usuarios', () => {
     }
   }
 
+  async function verificarOrdenesActivas(id) {
+    const res = await api.get(`/usuarios/${id}/ordenes-activas`)
+    return res.data
+  }
+
   async function obtenerRoles() {
     try {
       const res = await api.get('/roles')
@@ -79,7 +84,7 @@ export const useUsuariosStore = defineStore('usuarios', () => {
 
   return {
     usuarios, usuariosInactivos, roles, loading, error,
-    listar, listarInactivos, obtenerRoles,
+    listar, listarInactivos, verificarOrdenesActivas, obtenerRoles,
     crear, actualizar, eliminar, reactivar,
   }
 })

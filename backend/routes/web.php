@@ -40,6 +40,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/usuarios/{id}', [UsuarioController::class, 'destroy']);
         Route::put('/usuarios/{id}/reactivar', [UsuarioController::class, 'reactivar']);
         Route::get('/usuarios/reporte/pdf', [UsuarioController::class, 'reportePdf']);
+        Route::get('/usuarios/{id}/ordenes-activas', [UsuarioController::class, 'ordenesActivas']);
 
         Route::get('/turnos', [TurnoController::class, 'index']);
         Route::post('/turnos', [TurnoController::class, 'store']);

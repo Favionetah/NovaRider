@@ -1,20 +1,42 @@
 <script setup>
 defineProps({
   usuario: { type: Object, required: true },
+  tieneOrdenesActivas: { type: Boolean, default: null },
+  ordenes: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['confirmar', 'cancelar'])
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="emit('cancelar')">
+  <div class="modal-overlay">
     <div class="modal-confirmar">
       <h3>Desactivar Usuario</h3>
-      <p>
-        &iquest;Est&aacute; seguro de desactivar al usuario
-        <strong>{{ usuario?.nombre_completo || usuario?.username }}</strong>?
-      </p>
-      <p class="nota">El usuario no podr&aacute; iniciar sesi&oacute;n hasta que sea reactivado.</p>
+
+      <template v-if="tieneOrdenesActivas === null">
+        <p>
+          &iquest;Est&aacute; seguro de desactivar al usuario
+          <strong>{{ usuario?.nombre_completo || usuario?.username }}</strong>?
+        </p>
+        <p class="nota">El usuario no podr&aacute; iniciar sesi&oacute;n hasta que sea reactivado.</p>
+      </template>
+
+      <template v-else-if="tieneOrdenesActivas">
+        <div class="aviso-ordenes">
+          <p class="aviso-titulo">⚠ ESTE MEC&Aacute;NICO TIENE ORDENES PENDIENTES/EN PROCESO/FUTURAS</p>
+          <p class="aviso-desc">Si lo desactiva deber&aacute; reasignar un nuevo mec&aacute;nico a sus &oacute;rdenes afectadas.</p>
+          <ul class="lista-ordenes">
+            <li v-for="o in ordenes" :key="o.id_orden">
+              {{ o.nro_orden || '#' + o.id_orden }} — {{ o.estado }}
+            </li>
+          </ul>
+        </div>
+      </template>
+
+      <template v-else>
+        <p>Este usuario no tiene &oacute;rdenes activas, &iquest;desea desactivarlo?</p>
+      </template>
+
       <div class="acciones">
         <button class="btn-cancelar" @click="emit('cancelar')">Cancelar</button>
         <button class="btn-confirmar" @click="emit('confirmar')">Desactivar</button>
@@ -40,7 +62,7 @@ const emit = defineEmits(['confirmar', 'cancelar'])
   border-radius: 14px;
   padding: 28px;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   text-align: center;
 }
@@ -63,6 +85,47 @@ const emit = defineEmits(['confirmar', 'cancelar'])
   font-size: 13px;
   color: #929079;
   font-style: italic;
+}
+
+.aviso-ordenes {
+  background: #FEF3C7;
+  border-left: 4px solid #741102;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.aviso-titulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: #741102;
+  margin-bottom: 6px;
+}
+
+.aviso-desc {
+  font-size: 13px;
+  color: #92400E;
+  margin-bottom: 8px;
+}
+
+.lista-ordenes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lista-ordenes li {
+  font-size: 12px;
+  color: #92400E;
+  padding: 2px 0;
+  font-weight: 600;
+}
+
+.lista-ordenes li::before {
+  content: '•';
+  margin-right: 6px;
+  color: #741102;
 }
 
 .acciones {

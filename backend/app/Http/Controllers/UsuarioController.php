@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empleado;
+use App\Models\OrdenTrabajo;
 use App\Models\Rol;
 use App\Models\User; // 🚀 Tu modelo se llama User
 use App\Traits\AuditoriaTrait;
@@ -301,6 +302,25 @@ class UsuarioController extends Controller
         $this->registrarAuditoria('TUsuarios', $user->id_usuario, 'U', 'estadoA', '0', '1', 'Reactivacion de usuario');
 
         return response()->json(['message' => 'Usuario reactivado exitosamente']);
+    }
+
+    public function ordenesActivas($id)
+    {
+        $user = User::with('empleado')->findOrFail($id);
+
+        if (!$user->id_empleado) {
+            return response()->json(['tiene_ordenes' => false, 'ordenes' => []]);
+        }
+
+        $ordenes = OrdenTrabajo::where('id_empleado', $user->id_empleado)
+            ->where('estadoA', true)
+            ->whereNotIn('estado', ['completada', 'entregado'])
+            ->get(['id_orden', 'nro_orden', 'estado', 'fecha_ingreso']);
+
+        return response()->json([
+            'tiene_ordenes' => $ordenes->isNotEmpty(),
+            'ordenes' => $ordenes,
+        ]);
     }
 
     public function roles()
