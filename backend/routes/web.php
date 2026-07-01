@@ -15,7 +15,6 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ReservaController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\UsuarioController;
-use App\Models\Producto;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OrdenController;
 
@@ -143,11 +142,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/programaciones', [ProgramacionController::class, 'index']);
         Route::post('/programaciones', [ProgramacionController::class, 'store']);
         Route::get('/programaciones/global', [ProgramacionController::class, 'global']);
-
-        Route::get('/productos', function () {
-            $productos = Producto::where('estadoA', true)->orderBy('nombre')->get(['id_producto', 'nombre', 'stock_disponible']);
-            return response()->json(['productos' => $productos]);
-        });
 
         // === Rutas de Órdenes ===
         Route::get('/servicios', [OrdenController::class, 'servicios']);

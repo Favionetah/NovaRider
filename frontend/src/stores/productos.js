@@ -13,7 +13,7 @@ export const useProductosStore = defineStore('productos', () => {
     error.value = null
     try {
       const res = await api.get('/productos')
-      items.value = res.data.productos
+      items.value = res.data.productos ?? []
     } catch (err) {
       error.value = err.response?.data?.message || 'Error al cargar productos'
     } finally {

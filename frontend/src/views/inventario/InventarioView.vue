@@ -253,8 +253,8 @@ const estantesFiltrados = computed(() => {
                 </span>
                 <span v-else class="sin-ubicacion">—</span>
               </td>
-              <td class="td-monto">S/ {{ p.precio_venta.toFixed(2) }}</td>
-              <td class="td-monto">S/ {{ p.costo.toFixed(2) }}</td>
+              <td class="td-monto">S/ {{ (p.precio_venta ?? 0).toFixed(2) }}</td>
+              <td class="td-monto">S/ {{ (p.costo ?? 0).toFixed(2) }}</td>
               <td class="td-numero">{{ p.stock_fisico }}</td>
               <td class="td-numero">{{ p.stock_disponible }}</td>
               <td class="td-numero">{{ p.stock_minimo }}</td>
