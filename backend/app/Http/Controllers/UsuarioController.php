@@ -431,7 +431,7 @@ class UsuarioController extends Controller
             ->get()
             ->map(function($user) {
                 return [
-                    'id_empleado' => $user->id_usuario,
+                    'id_empleado' => $user->id_empleado,
                     'primer_nombre' => $user->empleado?->primer_nombre ?? 'Sin nombre',
                     'apellido_paterno' => $user->empleado?->apellido_paterno ?? ''
                 ];

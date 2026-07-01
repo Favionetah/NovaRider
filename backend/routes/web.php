@@ -149,10 +149,13 @@ Route::middleware('auth')->group(function () {
         });
 
         // === Rutas de Órdenes ===
+        Route::get('/servicios', [OrdenController::class, 'servicios']);
         Route::get('/ordenes/reporte/pdf', [OrdenController::class, 'reportePdf']);
+        Route::get('/ordenes/{id}/verificacion', [OrdenController::class, 'obtenerListaVerificacion']);
         Route::post('/ordenes/guardar-verificacion', [OrdenController::class, 'guardarListaVerificacion']);
         Route::get('/ordenes', [OrdenController::class, 'index']);
         Route::post('/ordenes', [OrdenController::class, 'store']);
+        Route::post('/ordenes/{id}/servicios', [OrdenController::class, 'guardarServicioOrden']);
         Route::put('/ordenes/{id}', [OrdenController::class, 'update']);
         Route::delete('/ordenes/{id}', [OrdenController::class, 'destroy']);
         Route::put('/ordenes/{id}/cambiar-estado', [OrdenController::class, 'cambiarEstado']);

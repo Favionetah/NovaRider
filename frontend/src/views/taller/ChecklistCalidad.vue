@@ -106,19 +106,22 @@ export default {
     },
     async enviarFormulario() {
   try {
-    // 1. Llamamos a tu servicio recién configurado
+    // 1. Guardamos en el servidor
     await tallerService.guardarChecklist(this.checklist);
     
-    // 2. Si todo sale bien, notificamos al padre
-    this.$emit('ordenActualizada', this.ordenActiva.id_orden);
-    alert('✅ Certificación de calidad registrada con éxito.');
+    // 2. Emitimos el evento hacia el padre (Listado.vue)
+    // Pasamos el ID para identificar la orden y un mensaje de éxito
+    this.$emit('ordenValidada', {
+        idOrden: this.ordenActiva.id_orden,
+        mensaje: '¡Validación de calidad completada exitosamente!'
+    });
     
-    // 3. Volvemos al listado
-    this.$emit('volver');
+    // 3. Ya no usamos alert(), el padre se encargará de mostrar el Toast
+    
   } catch (e) {
-    // 4. Si hay error, lo mostramos en consola para depurar
-    console.error("Error al guardar en el servidor:", e.response ? e.response.data : e);
-    alert('❌ Error al guardar la certificación. Revisa la consola para más detalles.');
+    console.error("Error al guardar en el servidor:", e);
+    // Opcional: podrías emitir un evento de error si quieres mostrar un Toast de error
+    alert('❌ Error al guardar la certificación.');
   }
 }
   }
