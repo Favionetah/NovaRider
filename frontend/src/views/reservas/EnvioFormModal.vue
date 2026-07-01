@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { useReservasStore } from '@/stores/reservas'
+import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
   reserva: { type: Object, required: true },
@@ -9,6 +10,7 @@ const props = defineProps({
 const emit = defineEmits(['cerrar'])
 
 const store = useReservasStore()
+const toast = useToastStore()
 
 const guardando = ref(false)
 const errorGeneral = ref('')
@@ -37,6 +39,7 @@ async function guardar() {
 
   try {
     await store.registrarEnvio(props.reserva.id_reserva, form.value)
+    toast.show('Envío registrado correctamente')
     cerrar()
   } catch (err) {
     const data = err.response?.data

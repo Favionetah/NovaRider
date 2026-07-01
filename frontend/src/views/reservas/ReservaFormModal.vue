@@ -1,11 +1,13 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useReservasStore } from '@/stores/reservas'
+import { useToastStore } from '@/stores/toast'
 import api from '@/services/api'
 
 const emit = defineEmits(['cerrar'])
 
 const store = useReservasStore()
+const toast = useToastStore()
 
 const clientes = ref([])
 const productos = ref([])
@@ -13,17 +15,29 @@ const guardando = ref(false)
 const errorGeneral = ref('')
 const errores = ref({})
 
+const hoy = new Date().toISOString().split('T')[0]
+
 const form = ref({
   id_cliente: '',
-  monto_adelanto: 0,
+  monto_adelanto: null,
   adelanto_metodo_pago: '',
-  fecha_expiracion: '',
+  fecha_expiracion: hoy,
   departamento_origen: '',
   detalles: [],
 })
 
+const minFechaExp = computed(() => {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().split('T')[0]
+})
+
 function agregarFila() {
   form.value.detalles.push({ id_producto: '', cantidad: 1 })
+}
+
+function limpiarMonto() {
+  if (!form.value.monto_adelanto) form.value.monto_adelanto = null
 }
 
 function quitarFila(index) {
@@ -38,6 +52,11 @@ const totalEstimado = computed(() => {
 })
 
 onMounted(async () => {
+  agregarFila()
+
+  await nextTick()
+  gsap.fromTo('.modal-card', { y: 30, opacity: 0, scale: 0.97 }, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: 'power3.out' })
+
   try {
     const [cliRes, prodRes] = await Promise.all([
       api.get('/clientes-lista'),
@@ -52,15 +71,34 @@ onMounted(async () => {
   } catch {
     errorGeneral.value = 'Error al cargar datos iniciales'
   }
-
-  agregarFila()
-
-  await nextTick()
-  gsap.fromTo('.modal-card', { y: 30, opacity: 0, scale: 0.97 }, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: 'power3.out' })
 })
 
 function cerrar() {
   emit('cerrar')
+}
+
+const departamentos = [
+  'Beni', 'Chuquisaca', 'Cochabamba', 'La Paz',
+  'Oruro', 'Pando', 'Potosí', 'Santa Cruz', 'Tarija'
+]
+
+const busquedaCliente = ref('')
+const mostrarSugerencias = ref(false)
+
+const clientesFiltrados = computed(() => {
+  if (!busquedaCliente.value) return []
+  const q = busquedaCliente.value.toLowerCase()
+  return clientes.value.filter(c => {
+    const nombre = nombreCliente(c).toLowerCase()
+    const ci = String(c.ci || '')
+    return nombre.includes(q) || ci.includes(q)
+  }).slice(0, 8)
+})
+
+function seleccionarCliente(c) {
+  form.value.id_cliente = c.id_cliente
+  busquedaCliente.value = nombreCliente(c) + (c.ci ? ` (${c.ci})` : '')
+  mostrarSugerencias.value = false
 }
 
 function nombreCliente(c) {
@@ -73,8 +111,22 @@ async function guardar() {
   errores.value = {}
   errorGeneral.value = ''
 
+  const errs = {}
+  if (!form.value.id_cliente) errs.id_cliente = ['Seleccioná un cliente']
+  if (!form.value.monto_adelanto || form.value.monto_adelanto < 1) errs.monto_adelanto = ['El monto del adelanto es requerido']
+  if (!form.value.adelanto_metodo_pago) errs.adelanto_metodo_pago = ['Seleccioná un método de pago']
+  if (form.value.fecha_expiracion && form.value.fecha_expiracion < minFechaExp.value) errs.fecha_expiracion = ['La expiración debe ser al menos un día después de hoy']
+  if (form.value.detalles.length === 0) errs.detalles = ['Agregá al menos un producto']
+
+  if (Object.keys(errs).length) {
+    errores.value = errs
+    guardando.value = false
+    return
+  }
+
   try {
     await store.crear(form.value)
+    toast.show('Reserva creada correctamente')
     cerrar()
   } catch (err) {
     const data = err.response?.data
@@ -90,7 +142,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
         <h2>Nueva Reserva</h2>
@@ -102,17 +154,22 @@ async function guardar() {
       <form @submit.prevent="guardar" class="modal-body">
         <div class="form-grid">
           <div class="form-group">
-            <label for="cliente">Cliente <span class="required">*</span></label>
-            <select
-              id="cliente"
-              v-model="form.id_cliente"
-              :class="{ 'input-error': errores.id_cliente }"
-            >
-              <option value="">Seleccionar cliente...</option>
-              <option v-for="c in clientes" :key="c.id_cliente" :value="c.id_cliente">
-                {{ nombreCliente(c) }} {{ c.ci ? `(${c.ci})` : '' }}
-              </option>
-            </select>
+            <label>Cliente <span class="required">*</span></label>
+            <div class="autocomplete-wrapper">
+              <input
+                v-model="busquedaCliente"
+                type="text"
+                placeholder="Buscar por nombre o CI..."
+                @focus="mostrarSugerencias = true"
+                @input="form.id_cliente = ''"
+                :class="{ 'input-error': errores.id_cliente }"
+              />
+              <ul v-if="mostrarSugerencias && clientesFiltrados.length" class="sugerencias-list">
+                <li v-for="c in clientesFiltrados" :key="c.id_cliente" @mousedown.prevent="seleccionarCliente(c)">
+                  {{ nombreCliente(c) }} {{ c.ci ? `(${c.ci})` : '' }}
+                </li>
+              </ul>
+            </div>
             <span v-if="errores.id_cliente" class="error-text">{{ errores.id_cliente[0] }}</span>
           </div>
 
@@ -122,32 +179,35 @@ async function guardar() {
               id="fecha_exp"
               v-model="form.fecha_expiracion"
               type="date"
+              :min="minFechaExp"
+              :class="{ 'input-error': errores.fecha_expiracion }"
             />
+            <span v-if="errores.fecha_expiracion" class="error-text">{{ errores.fecha_expiracion[0] }}</span>
           </div>
 
           <div class="form-group">
-            <label for="dep_origen">Departamento origen</label>
-            <input
-              id="dep_origen"
-              v-model="form.departamento_origen"
-              type="text"
-              placeholder="Ej: Santa Cruz"
-            />
+            <label for="dep_origen">Departamento destino</label>
+            <select id="dep_origen" v-model="form.departamento_origen">
+              <option value="">Seleccionar departamento...</option>
+              <option v-for="d in departamentos" :key="d" :value="d">{{ d }}</option>
+            </select>
           </div>
 
           <div class="form-group">
-            <label for="monto_adelanto">Monto adelanto</label>
+            <label for="monto_adelanto">Monto adelanto <span class="required">*</span></label>
             <input
               id="monto_adelanto"
               v-model.number="form.monto_adelanto"
               type="number"
-              min="0"
               step="0.01"
-              placeholder="0"
+              placeholder="ej: 50"
+              @blur="limpiarMonto"
+              :class="{ 'input-error': errores.monto_adelanto }"
             />
+            <span v-if="errores.monto_adelanto" class="error-text">{{ errores.monto_adelanto[0] }}</span>
           </div>
 
-          <div v-if="form.monto_adelanto > 0" class="form-group">
+          <div class="form-group">
             <label for="met_pago">Método pago adelanto <span class="required">*</span></label>
             <select
               id="met_pago"
@@ -204,7 +264,7 @@ async function guardar() {
               <div class="detalle-campo detalle-precio-info">
                 <label>Precio U.</label>
                 <span class="precio-info">
-                  ${{ (productos.find(p => p.id_producto === det.id_producto)?.precio_venta || 0).toFixed(2) }}
+                  Bs {{ (productos.find(p => p.id_producto === det.id_producto)?.precio_venta || 0).toFixed(2) }}
                 </span>
               </div>
               <button type="button" class="btn-quitar" @click="quitarFila(i)" title="Quitar">&times;</button>
@@ -213,7 +273,7 @@ async function guardar() {
 
           <div class="total-section">
             <span class="total-label">Total estimado:</span>
-            <span class="total-valor">${{ totalEstimado.toFixed(2) }}</span>
+            <span class="total-valor">Bs {{ totalEstimado.toFixed(2) }}</span>
           </div>
         </div>
 
@@ -500,4 +560,36 @@ async function guardar() {
 
 .btn-guardar:hover { background: #052E2A; }
 .btn-guardar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.sugerencias-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sugerencias-list li {
+  padding: 10px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #1F2937;
+}
+
+.sugerencias-list li:hover {
+  background: #F3F4F6;
+}
 </style>

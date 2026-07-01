@@ -51,9 +51,9 @@ class ReservaController extends Controller
     {
         $validated = $request->validate([
             'id_cliente' => 'required|exists:TClientes,id_cliente',
-            'monto_adelanto' => 'nullable|numeric|min:0',
-            'adelanto_metodo_pago' => 'nullable|required_with:monto_adelanto|in:QR,Efectivo',
-            'fecha_expiracion' => 'nullable|date|after_or_equal:today',
+            'monto_adelanto' => 'required|numeric|min:1',
+            'adelanto_metodo_pago' => 'required|in:QR,Efectivo',
+            'fecha_expiracion' => 'nullable|date|after:today',
             'departamento_origen' => 'nullable|string|max:255',
             'detalles' => 'required|array|min:1',
             'detalles.*.id_producto' => 'required|exists:TProductos,id_producto',

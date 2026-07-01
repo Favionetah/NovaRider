@@ -1,10 +1,12 @@
 <script setup>
 import { ref, onMounted, nextTick, watch } from 'vue'
 import { useReservasStore } from '@/stores/reservas'
+import { useToastStore } from '@/stores/toast'
 import ReservaFormModal from './ReservaFormModal.vue'
 import EnvioFormModal from './EnvioFormModal.vue'
 
 const store = useReservasStore()
+const toast = useToastStore()
 
 const busqueda = ref('')
 const filtroEstado = ref('')
@@ -15,8 +17,10 @@ const convertirModal = ref(false)
 const reservaConvertir = ref(null)
 const metodoPago = ref('')
 const descuento = ref(0)
-const mensajeExito = ref('')
+const mostrarConfirmarCancelar = ref(false)
+const reservaCancelar = ref(null)
 const detalleExpandido = ref(null)
+const cerrandoId = ref(null)
 
 onMounted(async () => {
   await store.listar()
@@ -51,7 +55,38 @@ function cerrarForm() {
 }
 
 function toggleDetalle(id) {
-  detalleExpandido.value = detalleExpandido.value === id ? null : id
+  const fila = document.querySelector(`tr[data-detalle="${id}"]`)
+
+  if (detalleExpandido.value === id) {
+    cerrandoId.value = id
+    if (fila) {
+      gsap.to(fila, {
+        height: 0, opacity: 0, duration: 0.25, ease: 'power2.in',
+        onComplete: () => {
+          cerrandoId.value = null
+          detalleExpandido.value = null
+        }
+      })
+    } else {
+      cerrandoId.value = null
+      detalleExpandido.value = null
+    }
+  } else {
+    detalleExpandido.value = id
+    nextTick(() => {
+      const nuevaFila = document.querySelector(`tr[data-detalle="${id}"]`)
+      if (nuevaFila) {
+        gsap.fromTo(nuevaFila,
+          { height: 0, opacity: 0 },
+          { height: 'auto', opacity: 1, duration: 0.3, ease: 'power3.out' }
+        )
+        gsap.fromTo(nuevaFila.querySelectorAll('tbody tr'),
+          { x: -10, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.2, stagger: 0.05, ease: 'power2.out', delay: 0.1 }
+        )
+      }
+    })
+  }
 }
 
 function abrirEnvio(reserva) {
@@ -64,9 +99,20 @@ function cerrarEnvio() {
   reservaEnvio.value = null
 }
 
-async function cancelarReserva(id) {
-  if (!confirm('¿Estás seguro de cancelar esta reserva?')) return
-  await store.cancelar(id)
+async function ejecutarCancelar() {
+  await store.cancelar(reservaCancelar.value.id_reserva)
+  toast.show('Reserva cancelada correctamente')
+  cerrarConfirmarCancelar()
+}
+
+function confirmarCancelar(reserva) {
+  reservaCancelar.value = reserva
+  mostrarConfirmarCancelar.value = true
+}
+
+function cerrarConfirmarCancelar() {
+  mostrarConfirmarCancelar.value = false
+  reservaCancelar.value = null
 }
 
 function abrirConvertir(reserva) {
@@ -85,9 +131,8 @@ async function confirmarConvertir() {
   if (!metodoPago.value) return
   const data = { metodo_pago: metodoPago.value }
   if (descuento.value > 0) data.descuento = descuento.value
-  const res = await store.convertirVenta(reservaConvertir.value.id_reserva, data)
-  mensajeExito.value = res.message
-  setTimeout(() => mensajeExito.value = '', 4000)
+  await store.convertirVenta(reservaConvertir.value.id_reserva, data)
+  toast.show('Reserva convertida a venta correctamente')
   cerrarConvertir()
 }
 
@@ -110,7 +155,6 @@ function estadoClase(estado) {
     </header>
 
     <p v-if="store.error" class="mensaje-error">{{ store.error }}</p>
-    <p v-if="mensajeExito" class="mensaje-exito">{{ mensajeExito }}</p>
 
     <div class="content-card">
       <div class="toolbar">
@@ -148,7 +192,8 @@ function estadoClase(estado) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="r in store.items" :key="r.id_reserva">
+            <template v-for="r in store.items" :key="r.id_reserva">
+            <tr>
               <td class="col-id">{{ r.id_reserva }}</td>
               <td class="col-cli">{{ r.cliente?.nombre_completo || '—' }}</td>
               <td class="col-fecha">{{ r.fecha_solicitud }}</td>
@@ -171,7 +216,7 @@ function estadoClase(estado) {
                 <span v-else class="sin-envio">—</span>
               </td>
               <td class="col-acc">
-                <button class="btn-accion" @click="toggleDetalle(r.id_reserva)" title="Detalle">
+                <button class="btn-accion" :class="{ 'btn-detalle-active': detalleExpandido === r.id_reserva }" @click="toggleDetalle(r.id_reserva)" title="Detalle">
                   <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
                     <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" />
                     <path d="M21 12c0 1.5-4 7-9 7s-9-5.5-9-7 4-7 9-7 9 5.5 9 7z" stroke="currentColor" stroke-width="1.5" />
@@ -207,7 +252,7 @@ function estadoClase(estado) {
                 <button
                   v-if="r.estado === 'pendiente'"
                   class="btn-accion btn-eliminar"
-                  @click="cancelarReserva(r.id_reserva)"
+                  @click="confirmarCancelar(r)"
                   title="Cancelar"
                 >
                   <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
@@ -216,6 +261,43 @@ function estadoClase(estado) {
                 </button>
               </td>
             </tr>
+
+            <tr v-if="detalleExpandido === r.id_reserva || cerrandoId === r.id_reserva" :data-detalle="r.id_reserva" class="detalle-fila">
+              <td colspan="8">
+                  <div class="detalle-contenido">
+                  <div class="detalle-resumen">
+                    <h4>Reserva #{{ r.id_reserva }}</h4>
+                    <div class="detalle-resumen-campos">
+                      <span><strong>Adelanto:</strong> Bs {{ Number(r.monto_adelanto || 0).toFixed(2) }}</span>
+                      <span><strong>Método de pago:</strong> {{ r.adelanto_metodo_pago || '—' }}</span>
+                      <span class="saldo-pendiente">
+                        <strong>Saldo pendiente:</strong>
+                        Bs {{ (r.detalles.reduce((s, d) => s + (d.producto?.precio_venta || 0) * d.cantidad_reservada, 0) - (r.monto_adelanto || 0)).toFixed(2) }}
+                      </span>
+                    </div>
+                  </div>
+                  <table class="tabla-detalle">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th>Precio Unit.</th>
+                        <th>Cantidad</th>
+                        <th>Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="d in r.detalles" :key="d.id_detalle_reserva">
+                        <td>{{ d.producto?.nombre || '—' }}</td>
+                        <td>Bs {{ Number(d.producto?.precio_venta || 0).toFixed(2) }}</td>
+                        <td>{{ d.cantidad_reservada }}</td>
+                        <td>Bs {{ (Number(d.producto?.precio_venta || 0) * d.cantidad_reservada).toFixed(2) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+            </template>
 
             <tr v-if="store.items.length === 0">
               <td colspan="8" class="sin-datos">
@@ -264,6 +346,18 @@ function estadoClase(estado) {
         <div class="modal-footer">
           <button class="btn-cancelar" @click="cerrarConvertir">Cancelar</button>
           <button class="btn-guardar" @click="confirmarConvertir">Confirmar Venta</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="mostrarConfirmarCancelar" class="modal-overlay" @click.self="cerrarConfirmarCancelar">
+      <div class="modal-confirmar">
+        <h3>Cancelar Reserva</h3>
+        <p>¿Estás seguro de cancelar la reserva <strong>#{{ reservaCancelar?.id_reserva }}</strong> del cliente <strong>{{ reservaCancelar?.cliente?.nombre_completo }}</strong>?</p>
+        <p class="nota-cancelar">El stock reservado será devuelto y la reserva quedará como cancelada.</p>
+        <div class="acciones-confirmar">
+          <button class="btn-cancelar-modal" @click="cerrarConfirmarCancelar">Volver</button>
+          <button class="btn-confirmar-cancelar" @click="ejecutarCancelar">Sí, cancelar</button>
         </div>
       </div>
     </div>
@@ -504,8 +598,6 @@ function estadoClase(estado) {
 .btn-eliminar { color: #741102; }
 .btn-eliminar:hover { border-color: #741102; background: rgba(116, 17, 2, 0.05); }
 
-.page-header, .toolbar, .tabla-wrapper,
-.tabla-contenido tbody tr { opacity: 0; }
 
 .sin-datos {
   text-align: center;
@@ -641,4 +733,143 @@ function estadoClase(estado) {
 
 .btn-guardar:hover { background: #052E2A; }
 .btn-guardar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-detalle-active {
+  color: #FFFFFF;
+  background: #042D29;
+  border-color: #042D29;
+}
+
+.detalle-fila {
+  overflow: hidden;
+}
+
+.detalle-fila td {
+  padding: 0 !important;
+  border-top: 1px solid #E5E7EB !important;
+}
+
+.detalle-contenido {
+  padding: 20px 24px;
+  background: #F9FAFB;
+}
+
+.detalle-contenido h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #042D29;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.detalle-resumen {
+  margin-bottom: 16px;
+}
+
+.detalle-resumen-campos {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+  color: #1F2937;
+  margin-top: 4px;
+}
+
+.saldo-pendiente {
+  background: #FEF3C7;
+  color: #92400E;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.tabla-detalle {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-detalle th {
+  font-size: 11px;
+  font-weight: 600;
+  color: #929079;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  text-align: left;
+}
+
+.tabla-detalle td {
+  font-size: 13px;
+  padding: 8px 12px;
+  color: #1F2937;
+}
+
+.tabla-detalle tbody tr:last-child td {
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.modal-confirmar {
+  background: #FFFFFF;
+  border-radius: 14px;
+  max-width: 440px;
+  width: 100%;
+  padding: 28px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.modal-confirmar h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #042D29;
+  margin-bottom: 12px;
+}
+
+.modal-confirmar p {
+  font-size: 14px;
+  color: #1F2937;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.nota-cancelar {
+  font-size: 12px;
+  color: #929079;
+  margin-bottom: 20px;
+}
+
+.acciones-confirmar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-cancelar-modal {
+  padding: 10px 20px;
+  background: #FFFFFF;
+  color: #929079;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar-modal:hover { border-color: #929079; color: #1F2937; }
+
+.btn-confirmar-cancelar {
+  padding: 10px 24px;
+  background: #741102;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-confirmar-cancelar:hover { background: #5A0D01; }
 </style>
