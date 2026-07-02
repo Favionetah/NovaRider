@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Estante;
+use App\Models\Producto;
 use App\Models\Seccion;
 use App\Models\Ubicacion;
 use App\Traits\AuditoriaTrait;
@@ -194,6 +195,24 @@ class EstanteController extends Controller
             'message' => 'Estante reactivado exitosamente',
             'estante' => $this->formatearEstante($estante->fresh()->load('secciones.ubicaciones')),
         ]);
+    }
+
+    public function productos($id)
+    {
+        $estante = Estante::with('secciones.ubicaciones')->findOrFail($id);
+
+        $ubicacionIds = $estante->secciones->flatMap->ubicaciones->pluck('id_ubicacion');
+
+        $productos = Producto::whereIn('id_ubicacion', $ubicacionIds)
+            ->where('estadoA', true)
+            ->get()
+            ->map(fn($p) => [
+                'id_producto' => $p->id_producto,
+                'nombre' => $p->nombre,
+                'stock_disponible' => (int) ($p->stock_disponible ?? 0),
+            ]);
+
+        return response()->json(['productos' => $productos]);
     }
 
     public function arbol()

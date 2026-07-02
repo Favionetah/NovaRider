@@ -49,7 +49,7 @@
 
         <div class="producto-info">
             <h2>{{ $producto->nombre }}</h2>
-            <p>Precio de venta: S/ {{ number_format($producto->precio_venta ?? 0, 2) }} &mdash; Stock disponible: {{ $producto->stock_disponible ?? 0 }} unidades</p>
+            <p>Precio de venta: Bs {{ number_format($producto->precio_venta ?? 0, 2) }} &mdash; Stock disponible: {{ $producto->stock_disponible ?? 0 }} unidades</p>
         </div>
 
         <p style="font-size: 11px; color: #5C5B4E; margin-bottom: 10px;">Total de motocicletas compatibles: <strong>{{ $total }}</strong></p>

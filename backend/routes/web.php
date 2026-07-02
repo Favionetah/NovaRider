@@ -84,6 +84,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/productos', [ProductoController::class, 'index']);
         Route::post('/productos', [ProductoController::class, 'store']);
         Route::get('/productos/{id}/motocicletas-compatibles/pdf', [ProductoController::class, 'motocicletasCompatiblesPdf']);
+        Route::get('/productos/modelos-desde-motocicletas', [ProductoController::class, 'modelosDesdeMotocicletas']);
         Route::get('/productos/{id}/motocicletas-compatibles', [ProductoController::class, 'motocicletasCompatibles']);
         Route::get('/productos/{id}/modelos', [ProductoController::class, 'modelos']);
         Route::post('/productos/{id}/modelos', [ProductoController::class, 'modelosSync']);
@@ -98,6 +99,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/estantes/{id}', [EstanteController::class, 'update']);
         Route::delete('/estantes/{id}', [EstanteController::class, 'destroy']);
         Route::put('/estantes/{id}/reactivar', [EstanteController::class, 'reactivar']);
+        Route::get('/estantes/{id}/productos', [EstanteController::class, 'productos']);
 
         Route::get('/modelos-compatibles', [ModelosCompatibleController::class, 'index']);
         Route::post('/modelos-compatibles', [ModelosCompatibleController::class, 'store']);

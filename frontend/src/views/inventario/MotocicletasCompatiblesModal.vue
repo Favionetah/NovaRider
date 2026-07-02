@@ -62,7 +62,7 @@ function cerrar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
         <h2>Motocicletas Compatibles</h2>

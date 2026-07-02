@@ -83,7 +83,7 @@
         </div>
 
         <div class="total-general">
-            Total General: ${{ number_format($totalGeneral, 2) }}
+            Total General: Bs {{ number_format($totalGeneral, 2) }}
         </div>
 
         <table>
@@ -105,7 +105,7 @@
                         <td>{{ $c['fecha'] }}</td>
                         <td>{{ $c['nro_factura_proveedor'] ?? '—' }}</td>
                         <td class="col-num">{{ count($c['detalles']) }}</td>
-                        <td class="col-num">${{ number_format($c['total_compra'], 2) }}</td>
+                        <td class="col-num">Bs {{ number_format($c['total_compra'], 2) }}</td>
                     </tr>
                 @empty
                     <tr>

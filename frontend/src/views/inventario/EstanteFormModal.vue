@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { useEstantesStore } from '@/stores/estantes'
+import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
   estante: { type: Object, default: null },
@@ -9,6 +10,7 @@ const props = defineProps({
 const emit = defineEmits(['cerrar', 'guardado'])
 
 const store = useEstantesStore()
+const toast = useToastStore()
 
 const esEdicion = !!props.estante
 
@@ -77,6 +79,12 @@ async function guardar() {
   errores.value = {}
   errorGeneral.value = ''
 
+  if (form.value.secciones.length === 0) {
+    errores.value = { secciones: ['Debe seleccionar al menos una sección'] }
+    guardando.value = false
+    return
+  }
+
   const payload = {
     numero_estante: Number(form.value.numero_estante),
     pasillo: form.value.pasillo || '',
@@ -92,14 +100,20 @@ async function guardar() {
   try {
     if (esEdicion) {
       await store.actualizar(props.estante.id_estante, payload)
+      toast.success('Estante actualizado correctamente')
     } else {
       await store.crear(payload)
+      toast.success('Estante creado correctamente')
     }
     emit('guardado')
   } catch (err) {
     const data = err.response?.data
     if (data?.errors) {
       errores.value = data.errors
+      nextTick(() => {
+        const primerError = document.querySelector('.input-error')
+        if (primerError) primerError.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
     } else {
       errorGeneral.value = data?.message || 'Error al guardar estante'
     }
@@ -110,7 +124,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
         <h2>{{ esEdicion ? 'Editar Estante' : 'Nuevo Estante' }}</h2>
@@ -156,7 +170,11 @@ async function guardar() {
           </div>
 
           <div class="form-group form-group-full">
-            <label>Secciones y Niveles</label>
+            <label>Secciones y Niveles
+              <span v-if="form.secciones.length" class="secciones-count">
+                {{ form.secciones.length }} seleccionada{{ form.secciones.length > 1 ? 's' : '' }}
+              </span>
+            </label>
             <div class="secciones-grid">
               <div
                 v-for="codigo in opcionesSecciones"
@@ -192,13 +210,14 @@ async function guardar() {
               </div>
             </div>
             <span class="help-text">Selecciona las secciones (A-D) y niveles (Alto, Medio, Bajo) para este estante</span>
+            <span v-if="errores.secciones" class="error-text">{{ errores.secciones[0] }}</span>
           </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn-cancelar" @click="cerrar">Cancelar</button>
           <button type="submit" class="btn-guardar" :disabled="guardando">
-            {{ guardando ? 'Guardando...' : 'Guardar' }}
+            {{ guardando ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Crear Estante') }}
           </button>
         </div>
       </form>
@@ -285,6 +304,17 @@ async function guardar() {
 }
 
 .required { color: #741102; }
+
+.secciones-count {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  background: #F0F4F3;
+  color: #042D29;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+}
 
 .form-group input,
 .form-group select {

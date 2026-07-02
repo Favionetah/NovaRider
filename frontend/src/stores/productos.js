@@ -75,9 +75,14 @@ export const useProductosStore = defineStore('productos', () => {
     return res.data
   }
 
+  async function obtenerModelosDesdeMotocicletas() {
+    const res = await api.get('/productos/modelos-desde-motocicletas')
+    return res.data.modelos
+  }
+
   return {
     items, itemsInactivos, loading, error,
     listar, listarInactivos, crear, actualizar, eliminar, reactivar,
-    listarModelos, guardarModelos,
+    listarModelos, guardarModelos, obtenerModelosDesdeMotocicletas,
   }
 })

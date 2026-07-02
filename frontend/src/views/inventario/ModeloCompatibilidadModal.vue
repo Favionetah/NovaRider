@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { useProductosStore } from '@/stores/productos'
-import { useModelosCompatiblesStore } from '@/stores/modelosCompatibles'
 
 const props = defineProps({
   producto: { type: Object, default: null },
@@ -10,23 +9,29 @@ const props = defineProps({
 const emit = defineEmits(['cerrar', 'guardado'])
 
 const productosStore = useProductosStore()
-const modelosStore = useModelosCompatiblesStore()
+
+function keyModelo(m) {
+  return `${m.marca}|${m.modelo}`
+}
 
 const modelosDisponibles = ref([])
 const modeloSeleccionados = ref([])
 const cargando = ref(false)
 const guardando = ref(false)
 const errorGeneral = ref('')
+const busquedaModelo = ref('')
 
 onMounted(async () => {
   cargando.value = true
   try {
-    await modelosStore.listar()
-    modelosDisponibles.value = modelosStore.items.filter((m) => m.estadoA)
+    const modelos = await productosStore.obtenerModelosDesdeMotocicletas()
+    modelosDisponibles.value = modelos
 
     if (props.producto) {
       const res = await productosStore.listarModelos(props.producto.id_producto)
-      modeloSeleccionados.value = res.map((m) => m.id_modelo)
+      modeloSeleccionados.value = res
+        .filter((m) => m.marca_moto && m.modelo_moto)
+        .map((m) => keyModelo({ marca: m.marca_moto, modelo: m.modelo_moto }))
     }
   } catch {
       errorGeneral.value = 'Error al cargar datos'
@@ -38,12 +43,13 @@ onMounted(async () => {
   gsap.fromTo('.modal-card', { y: 30, opacity: 0, scale: 0.97 }, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: 'power3.out' })
 })
 
-function toggleModelo(idModelo) {
-  const idx = modeloSeleccionados.value.indexOf(idModelo)
+function toggleModelo(m) {
+  const k = keyModelo(m)
+  const idx = modeloSeleccionados.value.indexOf(k)
   if (idx !== -1) {
     modeloSeleccionados.value.splice(idx, 1)
   } else {
-    modeloSeleccionados.value.push(idModelo)
+    modeloSeleccionados.value.push(k)
   }
 }
 
@@ -55,8 +61,13 @@ async function guardar() {
   guardando.value = true
   errorGeneral.value = ''
 
+  const payload = modeloSeleccionados.value.map((k) => {
+    const [marca, modelo] = k.split('|')
+    return { marca, modelo }
+  })
+
   try {
-    await productosStore.guardarModelos(props.producto.id_producto, modeloSeleccionados.value)
+    await productosStore.guardarModelos(props.producto.id_producto, payload)
     emit('guardado')
   } catch (err) {
     errorGeneral.value = err.response?.data?.message || 'Error al guardar compatibilidad'
@@ -66,17 +77,20 @@ async function guardar() {
 }
 
 function agruparPorMarca() {
+  const q = busquedaModelo.value.toLowerCase()
   const grupos = {}
-  modelosDisponibles.value.forEach((m) => {
-    if (!grupos[m.marca_moto]) grupos[m.marca_moto] = []
-    grupos[m.marca_moto].push(m)
-  })
+  modelosDisponibles.value
+    .filter((m) => !q || m.marca.toLowerCase().includes(q) || m.modelo.toLowerCase().includes(q))
+    .forEach((m) => {
+      if (!grupos[m.marca]) grupos[m.marca] = []
+      grupos[m.marca].push(m)
+    })
   return grupos
 }
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
         <h2>Compatibilidad de Modelos</h2>
@@ -93,30 +107,42 @@ function agruparPorMarca() {
         <div v-if="cargando" class="cargando">Cargando modelos...</div>
 
         <div v-else class="modelos-lista">
-          <div v-for="(modelos, marca) in agruparPorMarca()" :key="marca" class="marca-grupo">
-            <h4 class="marca-titulo">{{ marca }}</h4>
-            <div class="modelos-grid">
-              <label
-                v-for="m in modelos"
-                :key="m.id_modelo"
-                class="modelo-item"
-                :class="{ seleccionado: modeloSeleccionados.includes(m.id_modelo) }"
-              >
-                <input
-                  type="checkbox"
-                  :checked="modeloSeleccionados.includes(m.id_modelo)"
-                  @change="toggleModelo(m.id_modelo)"
-                />
-                <span class="modelo-nombre">{{ m.modelo_moto }}</span>
-                <span v-if="m.anio_inicio || m.anio_fin" class="modelo-anios">
-                  ({{ m.anio_inicio || '—' }} - {{ m.anio_fin || '—' }})
-                </span>
-              </label>
+          <div v-if="modelosDisponibles.length > 0" class="compat-search-box">
+            <svg viewBox="0 0 24 24" fill="none" class="compat-search-icon">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+              <path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <input
+              v-model="busquedaModelo"
+              type="text"
+              placeholder="Buscar por marca o modelo..."
+              class="compat-search-input"
+            />
+          </div>
+
+          <div v-if="modelosDisponibles.length > 0">
+            <div v-for="(modelos, marca) in agruparPorMarca()" :key="marca" class="marca-grupo">
+              <h4 class="marca-titulo">{{ marca }}</h4>
+              <div class="modelos-grid">
+                <label
+                  v-for="m in modelos"
+                  :key="keyModelo(m)"
+                  class="modelo-item"
+                  :class="{ seleccionado: modeloSeleccionados.includes(keyModelo(m)) }"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="modeloSeleccionados.includes(keyModelo(m))"
+                    @change="toggleModelo(m)"
+                  />
+                  <span class="modelo-nombre">{{ m.modelo }}</span>
+                </label>
+              </div>
             </div>
           </div>
 
-          <p v-if="modelosDisponibles.length === 0" class="sin-modelos">
-            No hay modelos compatibles registrados. Crea modelos en la pesta&ntilde;a "Compatibilidad" primero.
+          <p v-else class="sin-modelos">
+            No hay motocicletas registradas para mostrar modelos compatibles.
           </p>
         </div>
 
@@ -203,6 +229,41 @@ function agruparPorMarca() {
   color: #929079;
   padding: 32px 0;
   font-style: italic;
+}
+
+.compat-search-box {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.compat-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: #929079;
+  pointer-events: none;
+}
+
+.compat-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: #1F2937;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+
+.compat-search-input:focus {
+  border-color: #042D29;
+  box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
 }
 
 .marca-grupo { margin-bottom: 20px; }

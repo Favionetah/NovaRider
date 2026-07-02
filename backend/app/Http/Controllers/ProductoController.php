@@ -43,8 +43,8 @@ class ProductoController extends Controller
     {
         $validated = $request->validate([
             'id_ubicacion' => 'nullable|exists:TUbicaciones,id_ubicacion',
-            'nombre' => 'required|string|max:255',
-            'descripcion' => 'nullable|string',
+            'nombre' => 'required|string|max:50',
+            'descripcion' => 'nullable|string|max:100',
             'precio_venta' => 'nullable|numeric|min:0',
             'costo' => 'nullable|numeric|min:0',
             'stock_fisico' => 'nullable|integer|min:0',
@@ -100,8 +100,8 @@ class ProductoController extends Controller
 
         $validated = $request->validate([
             'id_ubicacion' => 'nullable|exists:TUbicaciones,id_ubicacion',
-            'nombre' => 'sometimes|string|max:255',
-            'descripcion' => 'nullable|string',
+            'nombre' => 'sometimes|string|max:50',
+            'descripcion' => 'nullable|string|max:100',
             'precio_venta' => 'nullable|numeric|min:0',
             'costo' => 'nullable|numeric|min:0',
             'stock_fisico' => 'nullable|integer|min:0',
@@ -221,7 +221,8 @@ class ProductoController extends Controller
 
         $validated = $request->validate([
             'modelos' => 'present|array',
-            'modelos.*' => 'integer|exists:TModelosCompatibles,id_modelo',
+            'modelos.*.marca' => 'required|string',
+            'modelos.*.modelo' => 'required|string',
         ]);
 
         $usuarioId = auth()->id();
@@ -229,7 +230,16 @@ class ProductoController extends Controller
         try {
             DB::beginTransaction();
 
-            $producto->modelosCompatibles()->sync($validated['modelos']);
+            $modeloIds = [];
+            foreach ($validated['modelos'] as $m) {
+                $modelo = ModelosCompatible::firstOrCreate(
+                    ['marca_moto' => $m['marca'], 'modelo_moto' => $m['modelo']],
+                    ['anio_inicio' => null, 'anio_fin' => null, 'estadoA' => true, 'usuarioA' => $usuarioId, 'fechahoraA' => now()]
+                );
+                $modeloIds[] = $modelo->id_modelo;
+            }
+
+            $producto->modelosCompatibles()->sync($modeloIds);
 
             $producto->update([
                 'usuarioA' => $usuarioId,
@@ -277,20 +287,11 @@ class ProductoController extends Controller
 
         $motocicletas = collect();
         foreach ($modelosCompatibles as $modelo) {
-            $query = Motocicleta::with('cliente')
+            $results = Motocicleta::with('cliente')
                 ->where('estadoA', true)
                 ->where('marca', $modelo->marca_moto)
-                ->where('modelo', $modelo->modelo_moto);
-
-            if ($modelo->anio_inicio && $modelo->anio_fin) {
-                $query->whereBetween('anio', [$modelo->anio_inicio, $modelo->anio_fin]);
-            } elseif ($modelo->anio_inicio) {
-                $query->where('anio', '>=', $modelo->anio_inicio);
-            } elseif ($modelo->anio_fin) {
-                $query->where('anio', '<=', $modelo->anio_fin);
-            }
-
-            $results = $query->get();
+                ->where('modelo', $modelo->modelo_moto)
+                ->get();
             $motocicletas = $motocicletas->concat($results);
         }
 
@@ -342,6 +343,19 @@ class ProductoController extends Controller
         $filename = 'compatibilidad_' . str_replace(' ', '_', $producto->nombre) . '_' . now()->format('Y-m-d') . '.pdf';
 
         return $pdf->download($filename);
+    }
+
+    public function modelosDesdeMotocicletas()
+    {
+        $modelos = \DB::table('TMotocicletas')
+            ->where('estadoA', true)
+            ->select('marca', 'modelo')
+            ->groupBy('marca', 'modelo')
+            ->orderBy('marca')
+            ->orderBy('modelo')
+            ->get();
+
+        return response()->json(['modelos' => $modelos]);
     }
 
     private function formatearProducto(Producto $producto)

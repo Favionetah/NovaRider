@@ -135,7 +135,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="cerrar">
+  <div class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
         <h2>{{ esEdicion ? 'Editar Producto' : 'Nuevo Producto' }}</h2>
@@ -152,9 +152,11 @@ async function guardar() {
               id="nombre"
               v-model="form.nombre"
               type="text"
+              maxlength="50"
               placeholder="Nombre del producto/repuesto"
               :class="{ 'input-error': errores.nombre }"
             />
+            <span class="char-counter">{{ form.nombre.length }}/50</span>
             <span v-if="errores.nombre" class="error-text">{{ errores.nombre[0] }}</span>
           </div>
 
@@ -163,9 +165,11 @@ async function guardar() {
             <textarea
               id="descripcion"
               v-model="form.descripcion"
+              maxlength="100"
               placeholder="Descripci&oacute;n del producto"
               rows="2"
             ></textarea>
+            <span class="char-counter">{{ form.descripcion.length }}/100</span>
           </div>
 
           <div class="form-group">
@@ -205,7 +209,7 @@ async function guardar() {
             </div>
             <div class="precios-grid">
               <div class="form-group">
-                <label for="precio_venta">Precio de Venta (S/)</label>
+                <label for="precio_venta">Precio de Venta (Bs)</label>
                 <input
                   id="precio_venta"
                   v-model="form.precio_venta"
@@ -218,7 +222,7 @@ async function guardar() {
               </div>
 
               <div class="form-group">
-                <label for="costo">Costo (S/)</label>
+                <label for="costo">Costo (Bs)</label>
                 <input
                   id="costo"
                   v-model="form.costo"
@@ -235,13 +239,13 @@ async function guardar() {
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
                 <path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
-              <span>&Uacute;ltimo costo de compra registrado: <strong>S/ {{ Number(props.producto.ultimo_costo_compra).toFixed(2) }}</strong></span>
+              <span>&Uacute;ltimo costo de compra registrado: <strong>Bs {{ Number(props.producto.ultimo_costo_compra).toFixed(2) }}</strong></span>
             </div>
 
             <div class="margen-info">
               <span class="margen-label">Margen de ganancia:</span>
               <span class="margen-valor" :class="{ positivo: margenNeto > 0, negativo: margenNeto < 0, cero: margenNeto === 0 }">
-                S/ {{ margenNeto.toFixed(2) }}
+                Bs {{ margenNeto.toFixed(2) }}
                 <span v-if="margenPorcentaje !== null" class="margen-porcentaje">
                   ({{ margenPorcentaje >= 0 ? '+' : '' }}{{ margenPorcentaje.toFixed(1) }}%)
                 </span>
@@ -413,6 +417,13 @@ async function guardar() {
 .error-text {
   font-size: 12px;
   color: #741102;
+}
+
+.char-counter {
+  font-size: 11px;
+  color: #929079;
+  text-align: right;
+  margin-top: 2px;
 }
 
 .help-text {

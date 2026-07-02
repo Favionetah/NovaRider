@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useProductosStore } from '@/stores/productos'
 import { useEstantesStore } from '@/stores/estantes'
-import { useModelosCompatiblesStore } from '@/stores/modelosCompatibles'
 import ProductoFormModal from './ProductoFormModal.vue'
 import EstanteFormModal from './EstanteFormModal.vue'
 import ModeloCompatibilidadModal from './ModeloCompatibilidadModal.vue'
@@ -10,7 +9,6 @@ import MotocicletasCompatiblesModal from './MotocicletasCompatiblesModal.vue'
 
 const productosStore = useProductosStore()
 const estantesStore = useEstantesStore()
-const modelosStore = useModelosCompatiblesStore()
 
 const tabActivo = ref('productos')
 const busqueda = ref('')
@@ -30,15 +28,25 @@ const mostrarMotosCompatibles = ref(false)
 const productoMotosCompatibles = ref(null)
 
 const compatProductoSeleccionado = ref('')
-const compatModelosIds = ref([])
+const compatModelosDisponibles = ref([])
+const compatModelosSeleccionados = ref([])
 const compatGuardando = ref(false)
 const compatMensaje = ref('')
+const compatBusquedaModelo = ref('')
+
+function keyCompatModelo(m) {
+  return `${m.marca}|${m.modelo}`
+}
+
+const confirmarEliminarEstante = ref(false)
+const estanteAEliminar = ref(null)
+const productosDelEstante = ref([])
+const cargandoProductosEstante = ref(false)
 
 onMounted(async () => {
   await Promise.all([
     productosStore.listar(),
     estantesStore.listar(),
-    modelosStore.listar(),
   ])
   await nextTick()
   animarEntrada()
@@ -48,8 +56,10 @@ watch(tabActivo, async () => {
   busqueda.value = ''
   busquedaEstante.value = ''
   compatProductoSeleccionado.value = ''
-  compatModelosIds.value = []
+  compatModelosSeleccionados.value = []
+  compatModelosDisponibles.value = []
   compatMensaje.value = ''
+  compatBusquedaModelo.value = ''
   await nextTick()
   animarEntrada()
 })
@@ -104,23 +114,32 @@ function productoSinProxys(p) {
 
 async function cargarCompatibilidadProducto() {
   if (!compatProductoSeleccionado.value) {
-    compatModelosIds.value = []
+    compatModelosDisponibles.value = []
+    compatModelosSeleccionados.value = []
     return
   }
+  compatBusquedaModelo.value = ''
   try {
-    const modelos = await productosStore.listarModelos(compatProductoSeleccionado.value)
-    compatModelosIds.value = modelos.map((m) => m.id_modelo)
+    const [modelos, modelosActuales] = await Promise.all([
+      productosStore.obtenerModelosDesdeMotocicletas(),
+      productosStore.listarModelos(compatProductoSeleccionado.value),
+    ])
+    compatModelosDisponibles.value = modelos
+    compatModelosSeleccionados.value = modelosActuales
+      .filter((m) => m.marca_moto && m.modelo_moto)
+      .map((m) => keyCompatModelo({ marca: m.marca_moto, modelo: m.modelo_moto }))
   } catch {
-    compatModelosIds.value = []
+    compatModelosDisponibles.value = []
+    compatModelosSeleccionados.value = []
   }
 }
 
-function toggleCompatModelo(idModelo) {
-  const idx = compatModelosIds.value.indexOf(idModelo)
+function toggleCompatModelo(modeloKey) {
+  const idx = compatModelosSeleccionados.value.indexOf(modeloKey)
   if (idx !== -1) {
-    compatModelosIds.value.splice(idx, 1)
+    compatModelosSeleccionados.value.splice(idx, 1)
   } else {
-    compatModelosIds.value.push(idModelo)
+    compatModelosSeleccionados.value.push(modeloKey)
   }
 }
 
@@ -128,8 +147,14 @@ async function guardarCompatibilidad() {
   if (!compatProductoSeleccionado.value) return
   compatGuardando.value = true
   compatMensaje.value = ''
+
+  const payload = compatModelosSeleccionados.value.map((k) => {
+    const [marca, modelo] = k.split('|')
+    return { marca, modelo }
+  })
+
   try {
-    await productosStore.guardarModelos(compatProductoSeleccionado.value, compatModelosIds.value)
+    await productosStore.guardarModelos(compatProductoSeleccionado.value, payload)
     compatMensaje.value = 'Compatibilidad guardada exitosamente'
     setTimeout(() => { compatMensaje.value = '' }, 3000)
   } catch {
@@ -140,12 +165,50 @@ async function guardarCompatibilidad() {
 }
 
 function agruparModelosPorMarca() {
+  const q = compatBusquedaModelo.value.toLowerCase()
   const grupos = {}
-  modelosStore.items.filter((m) => m.estadoA).forEach((m) => {
-    if (!grupos[m.marca_moto]) grupos[m.marca_moto] = []
-    grupos[m.marca_moto].push(m)
-  })
+  compatModelosDisponibles.value
+    .filter((m) => !q || m.marca.toLowerCase().includes(q) || m.modelo.toLowerCase().includes(q))
+    .forEach((m) => {
+      if (!grupos[m.marca]) grupos[m.marca] = []
+      grupos[m.marca].push(m)
+    })
   return grupos
+}
+
+function clasificarStock(p) {
+  const disp = p.stock_disponible ?? 0
+  const min = p.stock_minimo ?? 0
+  if (disp === 0 || disp < 10 || disp <= min) return { tipo: 'alerta' }
+  return { tipo: 'ok' }
+}
+
+async function confirmarEliminar(e) {
+  estanteAEliminar.value = e
+  productosDelEstante.value = []
+  confirmarEliminarEstante.value = true
+  cargandoProductosEstante.value = true
+  try {
+    const productos = await estantesStore.obtenerProductos(e.id_estante)
+    productosDelEstante.value = productos
+  } catch {
+    productosDelEstante.value = []
+  } finally {
+    cargandoProductosEstante.value = false
+  }
+}
+
+async function ejecutarEliminarEstante() {
+  if (!estanteAEliminar.value) return
+  try {
+    await estantesStore.eliminar(estanteAEliminar.value.id_estante)
+    confirmarEliminarEstante.value = false
+    estanteAEliminar.value = null
+    productosDelEstante.value = []
+    productosStore.listar()
+  } catch {
+    // error handled by store
+  }
 }
 
 const productosFiltrados = computed(() => {
@@ -166,6 +229,17 @@ const estantesFiltrados = computed(() => {
     (e.descripcion || '').toLowerCase().includes(q)
   )
 })
+
+function nivelesUnicos(e) {
+  if (!e.secciones?.length) return []
+  const niveles = new Set()
+  e.secciones.forEach((s) => {
+    (s.ubicaciones || []).forEach((u) => {
+      if (u.nivel) niveles.add(u.nivel)
+    })
+  })
+  return [...niveles]
+}
 
 
 </script>
@@ -224,6 +298,14 @@ const estantesFiltrados = computed(() => {
         </button>
       </div>
 
+      <div class="stock-alert-banner">
+        <svg viewBox="0 0 24 24" fill="none" width="20" height="20" class="banner-icon">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>Se alertar&aacute; cuando el stock de un producto sea inferior a 10 unidades.</span>
+      </div>
+
       <div class="tabla-wrapper">
         <table class="tabla-contenido">
           <thead>
@@ -232,10 +314,8 @@ const estantesFiltrados = computed(() => {
               <th>Estante</th>
               <th>Precio Venta</th>
               <th>Costo</th>
-              <th>Stock F&iacute;sico</th>
-              <th>Stock Disponible</th>
-              <th>Stock M&iacute;nimo</th>
-              <th>Alertas</th>
+              <th>Stock</th>
+              <th class="td-alertas">Alertas</th>
               <th>Compatibilidad</th>
               <th>Acciones</th>
             </tr>
@@ -247,28 +327,32 @@ const estantesFiltrados = computed(() => {
                   {{ p.nombre }}
                 </button>
               </td>
-              <td>
-                <span v-if="p.ubicacion" class="ubicacion-badge">
+              <td class="td-estante">
+                <span v-if="p.ubicacion && estantesStore.items.some(e => e.id_estante === p.ubicacion.id_estante)" class="ubicacion-badge">
                   Est.{{ p.ubicacion.numero_estante }} - {{ p.ubicacion.codigo_seccion }} - {{ p.ubicacion.nivel }}
                 </span>
-                <span v-else class="sin-ubicacion">—</span>
+                <span v-else class="sin-asignar">Sin asignar</span>
               </td>
-              <td class="td-monto">S/ {{ (p.precio_venta ?? 0).toFixed(2) }}</td>
-              <td class="td-monto">S/ {{ (p.costo ?? 0).toFixed(2) }}</td>
-              <td class="td-numero">{{ p.stock_fisico }}</td>
-              <td class="td-numero">{{ p.stock_disponible }}</td>
-              <td class="td-numero">{{ p.stock_minimo }}</td>
-              <td>
-                <span v-if="p.alerta_stock" class="alerta-badge" title="Stock por debajo del m&iacute;nimo">
-                  &#9888;
+              <td class="td-monto">Bs {{ (p.precio_venta ?? 0).toFixed(2) }}</td>
+              <td class="td-monto">Bs {{ (p.costo ?? 0).toFixed(2) }}</td>
+              <td class="td-stock">
+                <span class="stock-disp">{{ p.stock_disponible }}</span>
+                <span class="stock-sep">/</span>
+                <span class="stock-fis">{{ p.stock_fisico }}</span>
+              </td>
+              <td class="td-alertas">
+                <span v-if="clasificarStock(p).tipo !== 'ok'" class="alerta-texto">
+                  Reabastecer producto
                 </span>
                 <span v-else class="ok-badge">&#10003;</span>
               </td>
               <td>
-                <button class="btn-accion btn-compatibilidad" @click="abrirCompatibilidad(p)" title="Asignar modelos compatibles">
-                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
-                    <path d="M4 17l4 4 12-12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <button class="btn-compat-pill" @click="abrirCompatibilidad(p)" title="Ver motos compatibles">
+                  <svg viewBox="0 0 24 24" fill="none" width="14" height="14">
+                    <circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="2"/>
+                    <path d="M22 22l-5-5M10 6V2M10 18v4M18 10h4M2 10h4M6 4l2 2M14 14l2 2M6 16l-2 2M14 6l2-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                   </svg>
+                  Motos
                 </button>
               </td>
               <td>
@@ -282,7 +366,7 @@ const estantesFiltrados = computed(() => {
               </td>
             </tr>
             <tr v-if="productosFiltrados.length === 0">
-              <td colspan="10" class="td-vacio">No se encontraron productos</td>
+              <td colspan="8" class="td-vacio">No se encontraron productos</td>
             </tr>
           </tbody>
         </table>
@@ -320,7 +404,7 @@ const estantesFiltrados = computed(() => {
               <th>Pasillo</th>
               <th>Descripci&oacute;n</th>
               <th>Secciones</th>
-              <th>Ubicaciones</th>
+              <th>Niveles</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
@@ -329,10 +413,22 @@ const estantesFiltrados = computed(() => {
             <tr v-for="e in estantesFiltrados" :key="e.id_estante">
               <td class="td-numero">{{ e.numero_estante }}</td>
               <td>{{ e.pasillo || '—' }}</td>
-              <td>{{ e.descripcion || '—' }}</td>
-              <td class="td-numero">{{ e.secciones?.length || 0 }}</td>
-              <td class="td-numero">
-                {{ e.secciones?.reduce((acc, s) => acc + (s.ubicaciones?.length || 0), 0) || 0 }}
+              <td class="td-descripcion">{{ e.descripcion || '—' }}</td>
+              <td>
+                <div class="pills-container">
+                  <span v-for="s in (e.secciones || [])" :key="s.codigo_seccion" class="seccion-pill">
+                    {{ s.codigo_seccion }}
+                  </span>
+                  <span v-if="!e.secciones?.length" class="sin-dato">&mdash;</span>
+                </div>
+              </td>
+              <td>
+                <div class="pills-container">
+                  <span v-for="nivel in nivelesUnicos(e)" :key="nivel" class="nivel-pill">
+                    {{ nivel }}
+                  </span>
+                  <span v-if="!nivelesUnicos(e).length" class="sin-dato">&mdash;</span>
+                </div>
               </td>
               <td>
                 <span class="estado-badge" :class="e.estadoA ? 'activo' : 'inactivo'">
@@ -346,7 +442,7 @@ const estantesFiltrados = computed(() => {
                       <path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 3 21l.5-4.5L17 3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </button>
-                  <button v-if="e.estadoA" class="btn-accion btn-eliminar" @click="estantesStore.eliminar(e.id_estante)" title="Desactivar">
+                  <button v-if="e.estadoA" class="btn-accion btn-eliminar" @click="confirmarEliminar(e)" title="Desactivar">
                     <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
                       <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
@@ -359,6 +455,62 @@ const estantesFiltrados = computed(() => {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- MODAL: CONFIRMAR ELIMINAR ESTANTE -->
+    <div v-if="confirmarEliminarEstante" class="modal-overlay">
+      <div class="modal-card modal-eliminar-estante">
+        <div class="modal-header">
+          <h2>Desactivar Estante</h2>
+          <button class="btn-cerrar" @click="confirmarEliminarEstante = false">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="alerta-confirmacion">
+            <svg viewBox="0 0 24 24" fill="none" width="24" height="24" class="alerta-icono">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <p class="alerta-titulo">¿Est&aacute;s seguro de desactivar el estante <strong>N&deg; {{ estanteAEliminar?.numero_estante }}</strong>?</p>
+              <p class="alerta-subtitulo">Los productos en este estante dejar&aacute;n de tener una ubicaci&oacute;n asignada.</p>
+            </div>
+          </div>
+
+          <div v-if="cargandoProductosEstante" class="cargando-productos">
+            Verificando productos registrados...
+          </div>
+
+          <div v-else-if="productosDelEstante.length" class="productos-afectados">
+            <div class="productos-header">
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16" class="productos-icono">
+                <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span>Se encontraron <strong>{{ productosDelEstante.length }}</strong> producto(s) registrado(s) en este estante:</span>
+            </div>
+            <ul class="productos-lista">
+              <li v-for="prod in productosDelEstante" :key="prod.id_producto">
+                <span class="producto-nombre">{{ prod.nombre }}</span>
+                <span class="producto-stock">Stock: {{ prod.stock_disponible }}</span>
+              </li>
+            </ul>
+            <p class="productos-nota">
+              Los productos permanecer&aacute;n en el sistema sin ubicaci&oacute;n asignada.
+            </p>
+          </div>
+
+          <div v-else class="sin-productos">
+            No hay productos registrados en este estante.
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-cancelar" @click="confirmarEliminarEstante = false">Cancelar</button>
+          <button class="btn-eliminar-confirm" @click="ejecutarEliminarEstante" :disabled="cargandoProductosEstante">
+            {{ cargandoProductosEstante ? 'Verificando...' : 'Desactivar Estante' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -397,8 +549,21 @@ const estantesFiltrados = computed(() => {
           <strong>{{ productosStore.items.find(p => p.id_producto === Number(compatProductoSeleccionado))?.nombre }}</strong>
         </h3>
 
-        <div v-if="modelosStore.items.filter(m => m.estadoA).length === 0" class="sin-modelos">
-          No hay modelos de motocicleta registrados. Crea modelos desde la base de datos primero.
+        <div v-if="compatModelosDisponibles.length > 0" class="compat-search-box">
+          <svg viewBox="0 0 24 24" fill="none" class="compat-search-icon">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+            <path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input
+            v-model="compatBusquedaModelo"
+            type="text"
+            placeholder="Buscar por marca o modelo..."
+            class="compat-search-input"
+          />
+        </div>
+
+        <div v-if="compatModelosDisponibles.length === 0" class="sin-modelos">
+          No hay motocicletas registradas para mostrar modelos compatibles.
         </div>
 
         <div v-else class="compat-grid">
@@ -411,26 +576,23 @@ const estantesFiltrados = computed(() => {
             <div class="compat-modelos">
               <label
                 v-for="m in modelos"
-                :key="m.id_modelo"
+                :key="keyCompatModelo(m)"
                 class="compat-item"
-                :class="{ seleccionado: compatModelosIds.includes(m.id_modelo) }"
+                :class="{ seleccionado: compatModelosSeleccionados.includes(keyCompatModelo(m)) }"
               >
                 <input
                   type="checkbox"
-                  :checked="compatModelosIds.includes(m.id_modelo)"
-                  @change="toggleCompatModelo(m.id_modelo)"
+                  :checked="compatModelosSeleccionados.includes(keyCompatModelo(m))"
+                  @change="toggleCompatModelo(keyCompatModelo(m))"
                 />
-                <span class="compat-modelo-nombre">{{ m.modelo_moto }}</span>
-                <span v-if="m.anio_inicio || m.anio_fin" class="compat-anios">
-                  ({{ m.anio_inicio || '—' }} - {{ m.anio_fin || '—' }})
-                </span>
+                <span class="compat-modelo-nombre">{{ m.modelo }}</span>
               </label>
             </div>
           </div>
         </div>
 
         <div class="compat-footer">
-          <span class="compat-contador">{{ compatModelosIds.length }} modelo(s) seleccionado(s)</span>
+          <span class="compat-contador">{{ compatModelosSeleccionados.length }} modelo(s) seleccionado(s)</span>
           <button
             class="btn-primario"
             :disabled="compatGuardando"
@@ -613,8 +775,17 @@ const estantesFiltrados = computed(() => {
 .fila-alerta { background: #FFF5F5; }
 .fila-alerta:hover { background: #FFE8E8 !important; }
 
+.td-nombre,
+.td-estante {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .td-nombre { font-weight: 600; color: #042D29; }
 .td-monto { font-family: 'Inter', monospace; text-align: right; }
+.td-stock { text-align: center; font-family: 'Inter', monospace; font-size: 13px; }
+.tabla-contenido .td-alertas { text-align: center; }
 .td-numero { text-align: center; font-family: 'Inter', monospace; }
 .td-vacio { text-align: center; color: #929079; padding: 40px 16px; font-style: italic; }
 
@@ -630,16 +801,322 @@ const estantesFiltrados = computed(() => {
 
 .sin-ubicacion { color: #D1D5DB; }
 
-.alerta-badge {
+.td-descripcion {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.seccion-pill {
+  display: inline-block;
+  background: #F0F4F3;
+  color: #042D29;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.nivel-pill {
+  display: inline-block;
+  background: #EFF6FF;
+  color: #1E40AF;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.sin-dato { color: #D1D5DB; }
+
+.stock-disp { font-weight: 700; color: #042D29; }
+.stock-sep { color: #D1D5DB; margin: 0 2px; }
+.stock-fis { color: #929079; }
+
+.stock-alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #FFF5F5;
+  border-left: 4px solid #741102;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #741102;
+}
+.banner-icon { flex-shrink: 0; }
+
+.btn-compat-pill {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: #F0F4F3;
+  color: #042D29;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-compat-pill:hover {
+  background: #E0E8E6;
+  color: #042D29;
+}
+
+/* Modal de confirmación eliminar estante */
+.modal-eliminar-estante {
+  max-width: 520px;
+}
+
+/* Modal base — inline */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  z-index: 100;
+  padding: 20px;
+}
+
+.modal-card {
+  background: #FFFFFF;
+  border-radius: 14px;
+  max-width: 580px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.modal-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #042D29;
+}
+
+.btn-cerrar {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #929079;
+  cursor: pointer;
+  line-height: 1;
+}
+.btn-cerrar:hover { color: #741102; }
+
+.modal-body { padding: 24px; }
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.btn-cancelar {
+  padding: 10px 20px;
+  background: #FFFFFF;
+  color: #929079;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-cancelar:hover { border-color: #929079; color: #1F2937; }
+
+.alerta-confirmacion {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #FFF5F5;
+  border-left: 4px solid #741102;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.alerta-icono {
+  flex-shrink: 0;
+  color: #741102;
+  margin-top: 2px;
+}
+
+.alerta-titulo {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #741102;
+}
+
+.alerta-subtitulo {
+  margin: 0;
+  font-size: 12px;
+  color: #991B1B;
+}
+
+.cargando-productos {
+  text-align: center;
+  padding: 24px;
+  color: #929079;
+  font-size: 13px;
+}
+
+.productos-afectados {
+  margin-top: 4px;
+}
+
+.productos-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #1F2937;
+  margin-bottom: 8px;
+}
+
+.productos-header strong { color: #042D29; }
+
+.productos-icono {
+  flex-shrink: 0;
+  color: #741102;
+}
+
+.productos-lista {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.productos-lista li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.productos-lista li:last-child { border-bottom: none; }
+.productos-lista li:nth-child(odd) { background: #FAFAFA; }
+
+.producto-nombre { font-weight: 500; color: #042D29; }
+.producto-stock { color: #929079; font-family: 'Inter', monospace; font-size: 12px; }
+
+.productos-nota {
+  font-size: 12px;
+  color: #D97706;
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 10px 0 0;
+}
+
+.sin-productos {
+  text-align: center;
+  padding: 16px;
+  color: #929079;
+  font-size: 13px;
+  background: #F9F9F7;
+  border-radius: 8px;
+}
+
+.sin-asignar {
+  color: #929079;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.btn-eliminar-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
   background: #741102;
   color: #FFFFFF;
-  border-radius: 50%;
+  border: none;
+  border-radius: 10px;
   font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-eliminar-confirm:hover { background: #8B1A0A; }
+.btn-eliminar-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.compat-search-box {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.compat-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: #929079;
+  pointer-events: none;
+}
+
+.compat-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: #1F2937;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #FFFFFF;
+  box-sizing: border-box;
+}
+
+.compat-search-input:focus {
+  border-color: #042D29;
+  box-shadow: 0 0 0 3px rgba(4, 45, 41, 0.1);
+}
+
+.alerta-texto {
+  display: inline;
+  color: #741102;
+  font-size: 13px;
+  font-weight: 600;
   cursor: help;
 }
 
@@ -688,7 +1165,6 @@ const estantesFiltrados = computed(() => {
 .btn-accion:hover { background: #F5F4F0; }
 .btn-editar:hover { color: #042D29; }
 .btn-eliminar:hover { color: #741102; background: #FFF5F5; }
-.btn-compatibilidad:hover { color: #042D29; }
 
 .btn-nombre-producto {
   background: none;

@@ -75,9 +75,14 @@ export const useEstantesStore = defineStore('estantes', () => {
     }
   }
 
+  async function obtenerProductos(id) {
+    const res = await api.get(`/estantes/${id}/productos`)
+    return res.data.productos
+  }
+
   return {
     items, itemsInactivos, arbolUbicaciones, loading, error,
     listar, listarInactivos, crear, actualizar, eliminar, reactivar,
-    obtenerArbol,
+    obtenerArbol, obtenerProductos,
   }
 })
