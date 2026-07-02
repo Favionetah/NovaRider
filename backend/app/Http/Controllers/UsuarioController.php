@@ -392,11 +392,7 @@ class UsuarioController extends Controller
 
         $filename = 'reporte_usuarios_' . now()->format('Y-m-d_His') . '.pdf';
 
-        if ($request->boolean('preview')) {
-            return $pdf->stream($filename);
-        }
-
-        return $pdf->download($filename);
+        return $pdf->stream($filename);
     }
 
     // 🚀 Tu cambio integrado (Mecánicos Operativos del Taller)

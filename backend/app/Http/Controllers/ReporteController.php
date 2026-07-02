@@ -146,7 +146,7 @@ class ReporteController extends Controller
             'fecha' => now()->format('d/m/Y H:i')
         ]);
 
-        return $pdf->download("reporte_{$tipo}_" . now()->format('YmdHis') . ".pdf");
+        return $pdf->stream("reporte_{$tipo}_" . now()->format('YmdHis') . ".pdf");
     }
 
     private function exportGlobalReport()
@@ -166,6 +166,6 @@ class ReporteController extends Controller
             'fecha' => now()->format('d/m/Y H:i')
         ]);
 
-        return $pdf->download("reporte_general_" . now()->format('YmdHis') . ".pdf");
+        return $pdf->stream("reporte_general_" . now()->format('YmdHis') . ".pdf");
     }
 }

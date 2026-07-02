@@ -425,11 +425,7 @@ class ReservaController extends Controller
 
         $filename = 'reporte_reservas_' . now()->format('Y-m-d_His') . '.pdf';
 
-        if ($request->boolean('preview')) {
-            return $pdf->stream($filename);
-        }
-
-        return $pdf->download($filename);
+        return $pdf->stream($filename);
     }
 
     private function formatearReserva(Reserva $reserva)

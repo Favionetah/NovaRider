@@ -218,7 +218,7 @@ class CajaController extends Controller
             'fecha' => now()->format('d/m/Y H:i'),
         ]);
 
-        return $pdf->download('reporte_caja_' . now()->format('YmdHis') . '.pdf');
+        return $pdf->stream('reporte_caja_' . now()->format('YmdHis') . '.pdf');
     }
 
     public function cerrarCaja(Request $request)

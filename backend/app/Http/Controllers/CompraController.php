@@ -176,11 +176,7 @@ class CompraController extends Controller
 
         $filename = 'reporte_compras_' . now()->format('Y-m-d_His') . '.pdf';
 
-        if ($request->boolean('preview')) {
-            return $pdf->stream($filename);
-        }
-
-        return $pdf->download($filename);
+        return $pdf->stream($filename);
     }
 
     private function formatearCompra(Compra $compra)
