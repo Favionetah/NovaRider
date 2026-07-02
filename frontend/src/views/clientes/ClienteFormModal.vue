@@ -77,13 +77,19 @@ const soloLetras = (e) => {
   }
 }
 
+const soloAlfanumerico = (e) => {
+  if (!/^[a-zA-Z0-9]$/.test(e.key)) {
+    e.preventDefault()
+  }
+}
+
 const validarCampo = (campo, valor) => {
   switch (campo) {
     case 'ci':
       if (!valor) errores.value.ci = 'La cédula de identidad es obligatoria'
-      else if (!/^\d+$/.test(valor)) errores.value.ci = 'La cédula debe contener solo números'
-      else if (valor.length < 5) errores.value.ci = 'La cédula debe tener al menos 5 dígitos'
-      else if (valor.length > 15) errores.value.ci = 'La cédula no puede exceder los 15 dígitos'
+      else if (!/^[a-zA-Z0-9]+$/.test(valor)) errores.value.ci = 'La cédula debe ser alfanumérica'
+      else if (valor.length < 5) errores.value.ci = 'La cédula debe tener al menos 5 caracteres'
+      else if (valor.length > 15) errores.value.ci = 'La cédula no puede exceder los 15 caracteres'
       else errores.value.ci = ''
       break
     case 'primer_nombre':
@@ -238,7 +244,23 @@ async function guardar() {
     }
     emit('cerrar')
   } catch (error) {
-    const errorMsg = error.response?.data?.message || 'Error al guardar cliente'
+    let errorMsg = error.response?.data?.message || 'Error al guardar cliente'
+    
+    // Si hay errores de validación específicos, mostrar el primero
+    if (error.response?.data?.errors) {
+      const firstError = Object.values(error.response.data.errors)[0]
+      if (Array.isArray(firstError)) {
+        errorMsg = firstError[0]
+      }
+    }
+
+    if (errorMsg === 'Unauthenticated.') {
+      errorMsg = 'Su sesión ha expirado. Por favor, vuelva a iniciar sesión.'
+    }
+
+    // Limpiar mensajes genéricos de Laravel que contengan "(and X more error)"
+    errorMsg = errorMsg.replace(/\s*\(and \d+ more errors?\)/i, '')
+    
     mensajeError.value = errorMsg
     toast.error(errorMsg)
   } finally {
@@ -256,12 +278,10 @@ async function guardar() {
       </div>
 
       <form @submit.prevent="guardar" class="modal-form">
-        <p v-if="mensajeError" class="mensaje-error">{{ mensajeError }}</p>
-
         <div class="form-grid">
           <div class="campo" :class="{ 'has-error': errores.ci }">
             <label for="ci">Cédula de Identidad</label>
-            <input id="ci" v-model="form.ci" type="text" @keypress="soloNumeros" maxlength="15" />
+            <input id="ci" v-model="form.ci" type="text" @keypress="soloAlfanumerico" maxlength="15" placeholder="Ej: 1234567LP" />
             <p v-if="errores.ci" class="field-error">{{ errores.ci }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.primer_nombre }">

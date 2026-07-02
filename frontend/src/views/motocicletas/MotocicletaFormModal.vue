@@ -13,6 +13,7 @@ const store = useMotocicletasStore()
 const toast = useToastStore()
 const enviando = ref(false)
 const mensajeError = ref('')
+const filtroCliente = ref('')
 
 const maxYear = new Date().getFullYear() + 1
 
@@ -42,6 +43,28 @@ const errores = ref({
 
 const esEdicion = computed(() => !!props.motocicleta)
 
+const clientesFiltrados = computed(() => {
+  const q = filtroCliente.value.toLowerCase()
+  return props.clientes.filter(c => {
+    if (c.id_cliente === form.value.id_cliente) return true
+    if (!q) return true
+    const full = `${c.primer_nombre} ${c.segundo_nombre || ''} ${c.apellido_paterno} ${c.apellido_materno || ''} ${c.ci}`.toLowerCase()
+    return full.includes(q)
+  })
+})
+
+watch(filtroCliente, (newVal) => {
+  if (newVal.trim().length >= 3) {
+    const matches = props.clientes.filter(c => {
+      const full = `${c.primer_nombre} ${c.segundo_nombre || ''} ${c.apellido_paterno} ${c.apellido_materno || ''} ${c.ci}`.toLowerCase()
+      return full.includes(newVal.toLowerCase())
+    })
+    if (matches.length === 1) {
+      form.value.id_cliente = matches[0].id_cliente
+    }
+  }
+})
+
 const soloNumeros = (e) => {
   if (!/^\d$/.test(e.key)) {
     e.preventDefault()
@@ -56,6 +79,12 @@ const soloLetrasYSimbolos = (e) => {
 
 const soloAlfanumerico = (e) => {
   if (!/^[a-zA-Z0-9]$/.test(e.key)) {
+    e.preventDefault()
+  }
+}
+
+const soloAlfanumericoSimbolos = (e) => {
+  if (!/^[a-zA-Z0-9\s.-]$/.test(e.key)) {
     e.preventDefault()
   }
 }
@@ -202,7 +231,23 @@ async function guardar() {
     }
     emit('cerrar')
   } catch (error) {
-    const errorMsg = error.response?.data?.message || 'Error al guardar motocicleta'
+    let errorMsg = error.response?.data?.message || 'Error al guardar motocicleta'
+    
+    // Si hay errores de validación específicos, mostrar el primero
+    if (error.response?.data?.errors) {
+      const firstError = Object.values(error.response.data.errors)[0]
+      if (Array.isArray(firstError)) {
+        errorMsg = firstError[0]
+      }
+    }
+
+    if (errorMsg === 'Unauthenticated.') {
+      errorMsg = 'Su sesión ha expirado. Por favor, vuelva a iniciar sesión.'
+    }
+
+    // Limpiar mensajes genéricos de Laravel que contengan "(and X more error)"
+    errorMsg = errorMsg.replace(/\s*\(and \d+ more errors?\)/i, '')
+    
     mensajeError.value = errorMsg
     toast.error(errorMsg)
   } finally {
@@ -220,32 +265,36 @@ async function guardar() {
       </div>
 
       <form @submit.prevent="guardar" class="modal-form">
-        <p v-if="mensajeError" class="mensaje-error">{{ mensajeError }}</p>
-
         <div class="form-grid">
           <div class="campo" :class="{ 'has-error': errores.id_cliente }">
             <label for="id_cliente">Cliente</label>
+            <div class="search-box">
+              <input type="text" v-model="filtroCliente" placeholder="Buscar por nombre o CI..." class="input-search" @keypress="soloAlfanumericoSimbolos" />
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <select id="id_cliente" v-model="form.id_cliente">
               <option value="">Selecciona un cliente</option>
-              <option v-for="cliente in props.clientes" :key="cliente.id_cliente" :value="cliente.id_cliente">
-                {{ cliente.primer_nombre }} {{ cliente.apellido_paterno }} {{ cliente.apellido_materno || '' }}
+              <option v-for="cliente in clientesFiltrados" :key="cliente.id_cliente" :value="cliente.id_cliente">
+                {{ cliente.primer_nombre }} {{ cliente.segundo_nombre ? cliente.segundo_nombre + ' ' : '' }}{{ cliente.apellido_paterno }} {{ cliente.apellido_materno || '' }}
               </option>
             </select>
             <p v-if="errores.id_cliente" class="field-error">{{ errores.id_cliente }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.placa }">
             <label for="placa">Placa</label>
-            <input id="placa" v-model="form.placa" type="text" maxlength="10" @keypress="soloAlfanumerico" />
+            <input id="placa" v-model="form.placa" type="text" minlength="3" maxlength="10" @keypress="soloAlfanumerico" placeholder="Ej: 123ABC" />
             <p v-if="errores.placa" class="field-error">{{ errores.placa }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.marca }">
             <label for="marca">Marca</label>
-            <input id="marca" v-model="form.marca" type="text" @keypress="soloLetrasYSimbolos" maxlength="30" />
+            <input id="marca" v-model="form.marca" type="text" @keypress="soloLetrasYSimbolos" minlength="2" maxlength="30" placeholder="Ej: Honda" />
             <p v-if="errores.marca" class="field-error">{{ errores.marca }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.modelo }">
             <label for="modelo">Modelo</label>
-            <input id="modelo" v-model="form.modelo" type="text" @keypress="soloAlfanumerico" maxlength="30" />
+            <input id="modelo" v-model="form.modelo" type="text" @keypress="soloAlfanumericoSimbolos" maxlength="30" placeholder="Ej: CB500X" />
             <p v-if="errores.modelo" class="field-error">{{ errores.modelo }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.anio }">
@@ -365,6 +414,29 @@ async function guardar() {
   color: #1F2937;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-box {
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.input-search {
+  width: 100%;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 12px;
+  padding: 8px 12px 8px 36px !important;
+  font-size: 13px !important;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #6B7280;
 }
 
 .campo input:focus,
