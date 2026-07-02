@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Planilla;
 use App\Traits\AuditoriaTrait;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -129,6 +130,61 @@ class PlanillaController extends Controller
                 'total_neto' => (float) $totalNeto,
             ],
         ]);
+    }
+
+    public function reportePdf(Request $request)
+    {
+        $idEmpleado = $request->input('id_empleado');
+
+        $query = Planilla::with('empleado')
+            ->where('estadoA', true)
+            ->orderBy('anio', 'desc')
+            ->orderBy('mes', 'desc')
+            ->orderBy('id_planilla', 'desc');
+
+        $empleadoNombre = '';
+        if ($idEmpleado) {
+            $query->where('id_empleado', $idEmpleado);
+            $empleado = \App\Models\Empleado::find($idEmpleado);
+            if ($empleado) {
+                $empleadoNombre = trim(implode(' ', array_filter([
+                    $empleado->primer_nombre,
+                    $empleado->segundo_nombre,
+                    $empleado->apellido_paterno,
+                    $empleado->apellido_materno,
+                ])));
+            }
+        }
+
+        $planillas = $query->get()->map(function ($p) {
+            return $this->formatearPlanilla($p);
+        });
+
+        $totalBruto = $planillas->sum('sueldo_bruto');
+        $totalBonos = $planillas->sum('bonos');
+        $totalDeducciones = $planillas->sum('deducciones');
+        $totalNeto = $planillas->sum('sueldo_neto');
+
+        $logoPath = public_path('img/Logo3_NovaRider.png');
+        $logoExists = file_exists($logoPath);
+        $logoBase64 = $logoExists ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
+
+        $pdf = Pdf::loadView('reportes.planillas_pdf', [
+            'planillas' => $planillas,
+            'empleadoNombre' => $empleadoNombre,
+            'fechaGeneracion' => now()->format('d/m/Y H:i'),
+            'usuarioGenera' => auth()->user()->username ?? 'Sistema',
+            'logoBase64' => $logoBase64,
+            'totalRegistros' => $planillas->count(),
+            'totalBruto' => $totalBruto,
+            'totalBonos' => $totalBonos,
+            'totalDeducciones' => $totalDeducciones,
+            'totalNeto' => $totalNeto,
+        ]);
+
+        $filename = 'reporte_planillas_' . now()->format('Y-m-d_His') . '.pdf';
+
+        return $pdf->stream($filename);
     }
 
     private function formatearPlanilla(Planilla $planilla)

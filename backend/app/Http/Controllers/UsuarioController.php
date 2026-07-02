@@ -20,7 +20,7 @@ class UsuarioController extends Controller
     {
         $inactivos = $request->boolean('inactivos');
 
-        $query = User::with('empleado.programaciones', 'roles')
+        $query = User::with('empleado.programaciones', 'empleado.ultimaPlanilla', 'roles')
             ->orderBy('id_usuario');
 
         if ($inactivos) {
@@ -336,8 +336,14 @@ class UsuarioController extends Controller
         $busqueda = $request->input('busqueda', '');
         $rol = $request->input('rol', '');
         $inactivos = $request->boolean('inactivos');
+        $tipo = $request->input('tipo', 'usuarios');
 
-        $query = User::with('empleado', 'roles')->orderBy('id_usuario');
+        $query = User::with('empleado', 'roles')
+            ->orderBy('id_usuario');
+
+        if ($tipo === 'pagos') {
+            $query = User::with('empleado.ultimaPlanilla', 'roles');
+        }
 
         if ($inactivos) {
             $query->where('estadoA', false);
@@ -381,7 +387,9 @@ class UsuarioController extends Controller
         $logoExists = file_exists($logoPath);
         $logoBase64 = $logoExists ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
 
-        $pdf = Pdf::loadView('reportes.usuarios_pdf', [
+        $viewName = $tipo === 'pagos' ? 'reportes.usuarios_pagos_pdf' : 'reportes.usuarios_pdf';
+
+        $pdf = Pdf::loadView($viewName, [
             'usuarios' => $usuarios,
             'filtros' => $filtros,
             'fechaGeneracion' => now()->format('d/m/Y H:i'),
@@ -390,7 +398,9 @@ class UsuarioController extends Controller
             'totalRegistros' => $usuarios->count(),
         ]);
 
-        $filename = 'reporte_usuarios_' . now()->format('Y-m-d_His') . '.pdf';
+        $filename = $tipo === 'pagos'
+            ? 'reporte_pagos_' . now()->format('Y-m-d_His') . '.pdf'
+            : 'reporte_usuarios_' . now()->format('Y-m-d_His') . '.pdf';
 
         return $pdf->stream($filename);
     }
@@ -453,6 +463,11 @@ class UsuarioController extends Controller
             'fecha_ingreso' => $empleado?->fecha_ingreso,
             'estadoA' => $user->estadoA,
             'has_horario' => $empleado && $empleado?->programaciones?->where('estadoA', true)->count() > 0,
+            'ultimo_pago' => $empleado && $empleado->ultimaPlanilla ? [
+                'mes' => $empleado->ultimaPlanilla->mes,
+                'anio' => $empleado->ultimaPlanilla->anio,
+                'sueldo_neto' => (float) $empleado->ultimaPlanilla->sueldo_neto,
+            ] : null,
         ];
     }
 }

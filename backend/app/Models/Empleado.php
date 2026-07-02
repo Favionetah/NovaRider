@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Planilla;
 use Illuminate\Database\Eloquent\Model;
 
 class Empleado extends Model
@@ -39,5 +40,14 @@ class Empleado extends Model
     public function programaciones()
     {
         return $this->hasMany(Programacion::class, 'id_empleado');
+    }
+
+    public function ultimaPlanilla()
+    {
+        return $this->hasOne(Planilla::class, 'id_empleado')
+            ->where('estadoA', true)
+            ->orderBy('anio', 'desc')
+            ->orderBy('mes', 'desc')
+            ->orderBy('id_planilla', 'desc');
     }
 }

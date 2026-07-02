@@ -17,6 +17,7 @@ const filtroRol = ref('')
 const paginaActual = ref(1)
 const POR_PAGINA = 12
 const stats = ref({ total: 0, activos: 0, turnos_hoy: 0 })
+const verPagos = ref(false)
 
 async function cargarStats() {
   try {
@@ -191,6 +192,7 @@ async function exportarPdf() {
     if (busqueda.value) params.busqueda = busqueda.value
     if (filtroRol.value) params.rol = filtroRol.value
     if (tabActivo.value === 'inactivos') params.inactivos = true
+    if (verPagos.value) params.tipo = 'pagos'
     const res = await api.get('/usuarios/reporte/pdf', { params, responseType: 'blob' })
     const blob = new Blob([res.data], { type: 'application/pdf' })
     pdfBlobUrl.value = URL.createObjectURL(blob)
@@ -208,6 +210,7 @@ async function descargarPdf() {
     if (busqueda.value) params.busqueda = busqueda.value
     if (filtroRol.value) params.rol = filtroRol.value
     if (tabActivo.value === 'inactivos') params.inactivos = true
+    if (verPagos.value) params.tipo = 'pagos'
     const res = await api.get('/usuarios/reporte/pdf', { params, responseType: 'blob' })
     const blob = new Blob([res.data], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
@@ -315,6 +318,12 @@ function cerrarPreviewPdf() {
             </option>
           </select>
         </div>
+        <button class="btn-toggle-pagos" :class="{ active: verPagos }" @click="verPagos = !verPagos">
+          <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Ver Pagos
+        </button>
         <button class="btn-export-pdf" @click="exportarPdf">
           <svg viewBox="0 0 24 24" fill="none" class="icon-download">
             <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -349,7 +358,10 @@ function cerrarPreviewPdf() {
               <th class="col-user">Usuario</th>
               <th class="col-ci">CI</th>
               <th class="col-rol">Rol</th>
-              <th class="col-horario">Estado Horario</th>
+              <th class="col-horario">
+                <span v-if="!verPagos">Estado Horario</span>
+                <span v-else>Último Pago</span>
+              </th>
               <th class="col-acc">Acciones</th>
             </tr>
           </thead>
@@ -375,8 +387,16 @@ function cerrarPreviewPdf() {
                 </div>
               </td>
               <td class="col-horario">
-                <span v-if="u.has_horario" class="badge-horario badge-asignado">Horario asignado</span>
-                <span v-else class="badge-horario badge-sin-asignar">Sin asignar</span>
+                <template v-if="!verPagos">
+                  <span v-if="u.has_horario" class="badge-horario badge-asignado">Horario asignado</span>
+                  <span v-else class="badge-horario badge-sin-asignar">Sin asignar</span>
+                </template>
+                <template v-else>
+                  <span v-if="u.ultimo_pago" class="badge-horario badge-pago">
+                    Bs {{ Number(u.ultimo_pago.sueldo_neto).toFixed(2) }}
+                  </span>
+                  <span v-else class="badge-horario badge-sin-pago">Sin pagos</span>
+                </template>
               </td>
               <td class="col-acc">
                 <button class="btn-accion btn-editar" @click="editarUsuario(u)" title="Editar">
@@ -670,6 +690,34 @@ function cerrarPreviewPdf() {
   transition: all 0.2s ease;
 }
 
+.btn-toggle-pagos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  background: #FFFFFF;
+  color: #929079;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-toggle-pagos:hover {
+  border-color: #042D29;
+  color: #042D29;
+}
+
+.btn-toggle-pagos.active {
+  background: rgba(4, 45, 41, 0.08);
+  border-color: #042D29;
+  color: #042D29;
+  font-weight: 600;
+}
+
 .btn-export-pdf:hover {
   border-color: #042D29;
   background: #F9FAFB;
@@ -790,6 +838,17 @@ function cerrarPreviewPdf() {
 .badge-sin-asignar {
   background: rgba(116, 17, 2, 0.1);
   color: #741102;
+}
+
+.badge-pago {
+  background: rgba(4, 45, 41, 0.1);
+  color: #042D29;
+  font-weight: 700;
+}
+
+.badge-sin-pago {
+  background: rgba(146, 144, 121, 0.1);
+  color: #5C5B4E;
 }
 
 /* ── Action buttons ── */

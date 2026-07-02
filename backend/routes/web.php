@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/planillas', [PlanillaController::class, 'store']);
         Route::delete('/planillas/{id}', [PlanillaController::class, 'destroy']);
         Route::get('/planillas/resumen', [PlanillaController::class, 'resumen']);
+        Route::get('/planillas/reporte/pdf', [PlanillaController::class, 'reportePdf']);
 
         Route::get('/reportes/stats', [ReporteController::class, 'systemStats']);
         Route::get('/reportes/data', [ReporteController::class, 'data']);

@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { usePlanillasStore } from '@/stores/planillas'
 import { useToastStore } from '@/stores/toast'
 import PlanillaFormModal from './PlanillaFormModal.vue'
+import VistaPreviaPdfModal from './VistaPreviaPdfModal.vue'
 
 const props = defineProps({
   idEmpleado: { type: Number, default: null },
@@ -63,18 +64,69 @@ function cerrarConfirmar() {
   confirmarEliminar.value = false
   planillaEliminar.value = null
 }
+
+const mostrarPreviewPdf = ref(false)
+const pdfBlobUrl = ref('')
+const pdfCargando = ref(false)
+
+async function exportarPdf() {
+  pdfCargando.value = true
+  mostrarPreviewPdf.value = true
+  try {
+    const { default: api } = await import('@/services/api')
+    const params = { id_empleado: props.idEmpleado }
+    const res = await api.get('/planillas/reporte/pdf', { params, responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    pdfBlobUrl.value = URL.createObjectURL(blob)
+  } catch {
+    pdfBlobUrl.value = ''
+  } finally {
+    pdfCargando.value = false
+  }
+}
+
+async function descargarPdf() {
+  try {
+    const { default: api } = await import('@/services/api')
+    const params = { id_empleado: props.idEmpleado }
+    const res = await api.get('/planillas/reporte/pdf', { params, responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `planillas_empleado_${props.idEmpleado}_${new Date().toISOString().slice(0, 10)}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch { /* ignore */ }
+}
+
+function cerrarPreviewPdf() {
+  if (pdfBlobUrl.value) URL.revokeObjectURL(pdfBlobUrl.value)
+  pdfBlobUrl.value = ''
+  mostrarPreviewPdf.value = false
+}
 </script>
 
 <template>
   <div class="planilla-content">
-    <div class="tab-toolbar">
-      <div class="total-acumulado">
-        Total pagado: <strong>Bs {{ totalNeto.toFixed(2) }}</strong>
+      <div class="tab-toolbar">
+        <div class="total-acumulado">
+          Total pagado: <strong>Bs {{ totalNeto.toFixed(2) }}</strong>
+        </div>
+        <div class="toolbar-actions">
+          <button class="btn-export-pdf-sm" @click="exportarPdf">
+            <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px">
+              <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Exportar PDF
+          </button>
+          <button class="btn-nuevo-sm" @click="abrirForm">
+            + Nueva Liquidaci&oacute;n
+          </button>
+        </div>
       </div>
-      <button class="btn-nuevo-sm" @click="abrirForm">
-        + Nueva Liquidaci&oacute;n
-      </button>
-    </div>
 
     <p v-if="store.error" class="mensaje-error-sm">{{ store.error }}</p>
 
@@ -132,6 +184,17 @@ function cerrarConfirmar() {
         </div>
       </div>
     </Teleport>
+
+    <Teleport to="body">
+      <VistaPreviaPdfModal
+        v-if="mostrarPreviewPdf"
+        :pdf-blob-url="pdfBlobUrl"
+        :cargando="pdfCargando"
+        titulo="Vista Previa — Reporte de Planillas"
+        @descargar="descargarPdf"
+        @cerrar="cerrarPreviewPdf"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -153,6 +216,33 @@ function cerrarConfirmar() {
 .total-acumulado strong {
   color: #042D29;
   font-size: 16px;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-export-pdf-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #FFFFFF;
+  color: #1F2937;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-export-pdf-sm:hover {
+  border-color: #042D29;
+  background: #F9FAFB;
 }
 
 .btn-nuevo-sm {
