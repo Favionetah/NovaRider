@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useProgramacionesStore } from '@/stores/programaciones'
@@ -27,14 +27,19 @@ const programaciones = computed(() => programacionesStore.items || [])
 
 const esAdmin = computed(() => auth.tieneRol(1))
 
-onMounted(async () => {
+async function cargarUsuario(idUsuario) {
+  loading.value = true
+  error.value = ''
   try {
     const { default: api } = await import('@/services/api')
-    const res = await api.get(`/usuarios/${route.params.id}`)
+    const res = await api.get(`/usuarios/${idUsuario}`)
     usuario.value = res.data.usuario
     sueldoForm.value = usuario.value.sueldo_base || 0
-    await programacionesStore.obtener(route.params.id)
-    horarioListo.value = programaciones.value.length > 0
+    tabActivo.value = 'info'
+    if (usuario.value.id_empleado) {
+      await programacionesStore.obtener(usuario.value.id_empleado)
+      horarioListo.value = programaciones.value.length > 0
+    }
   } catch {
     error.value = 'Error al cargar datos del empleado'
   } finally {
@@ -43,6 +48,12 @@ onMounted(async () => {
   await nextTick()
   gsap.fromTo('.detalle-header', { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' })
   gsap.fromTo('.detalle-body', { y: 15, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.15 })
+}
+
+onMounted(() => cargarUsuario(route.params.id))
+
+watch(() => route.params.id, (newId) => {
+  if (newId) cargarUsuario(newId)
 })
 
 function volver() {
@@ -96,7 +107,7 @@ async function guardarSueldo() {
         <div v-if="esAdmin" class="sueldo-section">
           <label>Sueldo Base</label>
           <div v-if="!sueldoEditando" class="sueldo-display" @click="sueldoEditando = true">
-            <span class="sueldo-valor">${{ Number(usuario.sueldo_base || 0).toFixed(2) }}</span>
+            <span class="sueldo-valor">Bs {{ Number(usuario.sueldo_base || 0).toFixed(2) }}</span>
             <svg viewBox="0 0 24 24" fill="none" class="icon-edit-sueldo">
               <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
             </svg>
@@ -205,7 +216,7 @@ async function guardarSueldo() {
         <Teleport to="body">
           <ProgramacionModal
             v-if="mostrarModalHorario"
-            :id-empleado="Number(route.params.id)"
+            :id-empleado="usuario.id_empleado"
             :horario-actual="programaciones"
             @cerrar="mostrarModalHorario = false"
             @guardado="() => { mostrarModalHorario = false; horarioListo = true }"

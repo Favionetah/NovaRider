@@ -20,7 +20,7 @@ class UsuarioController extends Controller
     {
         $inactivos = $request->boolean('inactivos');
 
-        $query = User::with('empleado', 'roles')
+        $query = User::with('empleado.programaciones', 'roles')
             ->orderBy('id_usuario');
 
         if ($inactivos) {
@@ -452,6 +452,7 @@ class UsuarioController extends Controller
             'fecha_nacimiento' => $empleado?->fecha_nacimiento,
             'fecha_ingreso' => $empleado?->fecha_ingreso,
             'estadoA' => $user->estadoA,
+            'has_horario' => $empleado && $empleado?->programaciones?->where('estadoA', true)->count() > 0,
         ];
     }
 }

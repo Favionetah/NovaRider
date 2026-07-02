@@ -35,4 +35,9 @@ class Empleado extends Model
     {
         return $this->hasOne(User::class, 'id_empleado');
     }
+
+    public function programaciones()
+    {
+        return $this->hasMany(Programacion::class, 'id_empleado');
+    }
 }

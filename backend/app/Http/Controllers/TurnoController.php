@@ -146,7 +146,7 @@ class TurnoController extends Controller
         }
 
         $hoy = now()->toDateString();
-        $horaActual = now()->format('H:i');
+        $horaActual = $request->input('hora', now()->format('H:i'));
         $diaSemana = (int) now()->format('N'); // 1=Lun ... 6=Sab, 7=Dom
         $usuarioId = auth()->id();
 

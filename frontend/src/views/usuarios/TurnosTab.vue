@@ -69,7 +69,9 @@ async function registrarAsistencia() {
   registrando.value = true
   mensajeRegistro.value = ''
   try {
-    const res = await api.post('/turnos/registrar', { id_empleado: props.idEmpleado })
+    const ahora = new Date()
+    const hora = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0')
+    const res = await api.post('/turnos/registrar', { id_empleado: props.idEmpleado, hora })
     tipoRegistro.value = res.data.tipo === 'entrada' ? 'salida' : 'completo'
     await store.listar({ id_empleado: props.idEmpleado })
   } catch (err) {

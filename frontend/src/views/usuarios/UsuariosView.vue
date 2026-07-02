@@ -349,6 +349,7 @@ function cerrarPreviewPdf() {
               <th class="col-user">Usuario</th>
               <th class="col-ci">CI</th>
               <th class="col-rol">Rol</th>
+              <th class="col-horario">Estado Horario</th>
               <th class="col-acc">Acciones</th>
             </tr>
           </thead>
@@ -373,6 +374,10 @@ function cerrarPreviewPdf() {
                   </span>
                 </div>
               </td>
+              <td class="col-horario">
+                <span v-if="u.has_horario" class="badge-horario badge-asignado">Horario asignado</span>
+                <span v-else class="badge-horario badge-sin-asignar">Sin asignar</span>
+              </td>
               <td class="col-acc">
                 <button class="btn-accion btn-editar" @click="editarUsuario(u)" title="Editar">
                   <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
@@ -387,7 +392,7 @@ function cerrarPreviewPdf() {
               </td>
             </tr>
             <tr v-if="usuariosPagina.length === 0">
-              <td colspan="6" class="sin-datos">
+              <td colspan="7" class="sin-datos">
                 {{ busqueda || filtroRol ? 'No se encontraron usuarios con esos filtros' : 'No hay usuarios activos registrados' }}
               </td>
             </tr>
@@ -404,6 +409,7 @@ function cerrarPreviewPdf() {
               <td class="col-rol">
                 <span class="badge-rol inactivo">Inactivo</span>
               </td>
+              <td class="col-horario">—</td>
               <td class="col-acc">
                 <button class="btn-accion btn-reactivar" @click="reactivarUsuario(u.id_usuario)" title="Reactivar">
                   <svg viewBox="0 0 24 24" fill="none" class="icon-accion">
@@ -415,7 +421,7 @@ function cerrarPreviewPdf() {
               </td>
             </tr>
             <tr v-if="inactivosPagina.length === 0">
-              <td colspan="6" class="sin-datos">
+              <td colspan="7" class="sin-datos">
                 {{ busqueda ? 'No se encontraron usuarios inactivos con ese criterio' : 'No hay usuarios inactivos' }}
               </td>
             </tr>
@@ -729,7 +735,9 @@ function cerrarPreviewPdf() {
 .col-emp { min-width: 180px; }
 .col-user { min-width: 120px; }
 .col-ci { min-width: 130px; }
-.col-rol { min-width: 140px; }
+.col-rol { min-width: 100px; }
+.col-horario { min-width: 140px; white-space: nowrap; }
+.tabla-usuarios th.col-horario { text-align: center; }
 .col-acc { width: 100px; text-align: right; }
 
 .emp-nombre {
@@ -763,6 +771,25 @@ function cerrarPreviewPdf() {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+.badge-horario {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-asignado {
+  background: rgba(4, 45, 41, 0.1);
+  color: #042D29;
+}
+
+.badge-sin-asignar {
+  background: rgba(116, 17, 2, 0.1);
+  color: #741102;
 }
 
 /* ── Action buttons ── */

@@ -106,7 +106,7 @@ async function guardar() {
           <div class="form-group">
             <label>Sueldo Neto</label>
             <div class="neto-calculado">
-              ${{ sueldoNeto.toFixed(2) }}
+              Bs {{ sueldoNeto.toFixed(2) }}
             </div>
           </div>
         </div>

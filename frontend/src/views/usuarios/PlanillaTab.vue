@@ -69,7 +69,7 @@ function cerrarConfirmar() {
   <div class="planilla-content">
     <div class="tab-toolbar">
       <div class="total-acumulado">
-        Total pagado: <strong>${{ totalNeto.toFixed(2) }}</strong>
+        Total pagado: <strong>Bs {{ totalNeto.toFixed(2) }}</strong>
       </div>
       <button class="btn-nuevo-sm" @click="abrirForm">
         + Nueva Liquidaci&oacute;n
@@ -92,10 +92,10 @@ function cerrarConfirmar() {
       <tbody>
         <tr v-for="p in store.items" :key="p.id_planilla">
           <td><strong>{{ meses[p.mes - 1] }}</strong> {{ p.anio }}</td>
-          <td>${{ Number(p.sueldo_bruto).toFixed(2) }}</td>
-          <td class="text-bonos">+${{ Number(p.bonos).toFixed(2) }}</td>
-          <td class="text-deducciones">-${{ Number(p.deducciones).toFixed(2) }}</td>
-          <td class="text-neto">${{ Number(p.sueldo_neto).toFixed(2) }}</td>
+          <td>Bs {{ Number(p.sueldo_bruto).toFixed(2) }}</td>
+          <td class="text-bonos">+Bs {{ Number(p.bonos).toFixed(2) }}</td>
+          <td class="text-deducciones">-Bs {{ Number(p.deducciones).toFixed(2) }}</td>
+          <td class="text-neto">Bs {{ Number(p.sueldo_neto).toFixed(2) }}</td>
           <td>
             <button class="btn-accion-sm btn-eliminar-sm" @click="confirmarEliminarPlanilla(p.id_planilla)" title="Eliminar">
               <svg viewBox="0 0 24 24" fill="none" style="width:14px;height:14px">
