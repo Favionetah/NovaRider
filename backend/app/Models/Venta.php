@@ -20,6 +20,7 @@ class Venta extends Model
         'descuento',
         'total',
         'metodo_pago',
+        'concepto_resumen',
         'estadoA',
         'usuarioA',
         'fechahoraA'

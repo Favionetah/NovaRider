@@ -14,6 +14,7 @@ class OrdenTrabajo extends Model
         'id_motocicleta',
         'id_empleado',
         'nro_orden',
+        'codigo_seguimiento',
         'fecha_ingreso',
         'fecha_cierre',
         'estado',

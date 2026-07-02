@@ -22,6 +22,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/ordenes/seguimiento/{codigo}', [OrdenController::class, 'seguimientoPublico']);
+
 Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
@@ -57,12 +59,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/reportes/data', [ReporteController::class, 'data']);
 
         // --- Módulo Caja y Ventas ---
+    });
+
+    // --- Modulo Caja y Ventas (Roles 1, 2) ---
+    Route::middleware('role:1,2')->group(function () {
         Route::get('/caja/estado', [CajaController::class, 'obtenerEstadoCaja']);
         Route::post('/caja/abrir', [CajaController::class, 'abrirCaja']);
         Route::post('/caja/ventas', [CajaController::class, 'crearRecibo']);
         Route::get('/caja/ventas', [CajaController::class, 'obtenerVentas']);
+        Route::get('/caja/ventas/pdf', [CajaController::class, 'ventasPdf']);
         Route::post('/caja/cerrar', [CajaController::class, 'cerrarCaja']);
-
     });
 
     // --- Grupo Inventario y Compras (Roles 1, 2, 5) ---
@@ -154,12 +160,14 @@ Route::middleware('auth')->group(function () {
         // === Rutas de Órdenes ===
         Route::get('/servicios', [OrdenController::class, 'servicios']);
         Route::post('/servicios', [OrdenController::class, 'guardarServicio']);
+        Route::get('/ordenes/repuestos-disponibles', [OrdenController::class, 'repuestosDisponibles']);
         Route::get('/ordenes/reporte/pdf', [OrdenController::class, 'reportePdf']);
         Route::get('/ordenes/{id}/verificacion', [OrdenController::class, 'obtenerListaVerificacion']);
         Route::post('/ordenes/guardar-verificacion', [OrdenController::class, 'guardarListaVerificacion']);
         Route::get('/ordenes', [OrdenController::class, 'index']);
         Route::post('/ordenes', [OrdenController::class, 'store']);
         Route::post('/ordenes/{id}/servicios', [OrdenController::class, 'guardarServicioOrden']);
+        Route::post('/ordenes/{id}/repuestos', [OrdenController::class, 'guardarRepuestoOrden']);
         Route::put('/ordenes/{id}', [OrdenController::class, 'update']);
         Route::delete('/ordenes/{id}', [OrdenController::class, 'destroy']);
         Route::put('/ordenes/{id}/cambiar-estado', [OrdenController::class, 'cambiarEstado']);

@@ -29,7 +29,6 @@
             v-model="filtroTexto"
           >
         </div>
-        
 
         <div class="select-wrapper">
           <select v-model="estadoFiltro" class="novarider-select">
@@ -88,14 +87,16 @@
                   </span>
                 </td>
                 <td class="text-right actions-cell">
-                  <button 
-                    v-if="orden.estado !== 'Listo para entrega' && orden.estado !== 'Entregado'"
-                    @click="marcarComoListo(orden)" 
-                    class="btn-table-action btn-ready" 
-                    title="Marcar como Listo para Entrega"
+                  <select
+                    :value="orden.estado"
+                    class="estado-select"
+                    title="Cambiar estado de la orden"
+                    @change="cambiarEstadoOrden(orden, $event.target.value)"
                   >
-                    🚀 Listo
-                  </button>
+                    <option v-for="estado in estadosOrden" :key="estado" :value="estado">
+                      {{ estado }}
+                    </option>
+                  </select>
 
                   <button 
                     @click="irAChecklist(orden)" 
@@ -114,6 +115,10 @@
                     Servicio
                   </button>
 
+                  <button @click="abrirModalRepuestoOrden(orden)" class="btn-table-action btn-part" title="Agregar repuesto">
+                    Repuesto
+                  </button>
+
                   <button @click="abrirQrOrden(orden)" class="btn-table-action btn-qr" title="Ver QR de la orden">
                     QR
                   </button>
@@ -130,13 +135,13 @@
       </div>
 
       <div v-else-if="vistaActual === 'checklist'" class="card-content-body p-0">
-      <ChecklistCalidad 
-        :ordenActiva="ordenSeleccionada" 
-        @volver="regresarAListado" 
-        @ordenActualizada="actualizarEstadoOrdenLista"
-        @ordenValidada="manejarValidacionExitosa" 
-      />
-    </div>
+        <ChecklistCalidad 
+          :ordenActiva="ordenSeleccionada" 
+          @volver="regresarAListado" 
+          @ordenActualizada="actualizarEstadoOrdenLista"
+          @ordenValidada="manejarValidacionExitosa" 
+        />
+      </div>
     </div>
 
     <div v-if="mostrarModalOrden" class="nr-modal-overlay" @click="mostrarModalOrden = false">
@@ -146,7 +151,6 @@
           <button @click="mostrarModalOrden = false" class="nr-btn-close">✕</button>
         </div>
         <form @submit.prevent="guardarNuevaOrden" class="nr-modal-body">
-          
           <div class="nr-form-group">
             <label>Nro. de Orden</label>
             <input type="text" v-model="nuevaOrden.nro_orden" readonly class="novarider-input-disabled">
@@ -327,6 +331,70 @@
       </div>
     </div>
 
+    <div v-if="mostrarModalRepuestoOrden" class="nr-modal-overlay" @click="cerrarModalRepuestoOrden">
+      <div class="nr-modal" @click.stop>
+        <div class="nr-modal-header">
+          <h3>Agregar repuesto a orden #{{ ordenRepuestoActiva ? ordenRepuestoActiva.nro_orden : '' }}</h3>
+          <button @click="cerrarModalRepuestoOrden" class="nr-btn-close">x</button>
+        </div>
+
+        <form @submit.prevent="guardarRepuestoOrden" class="nr-modal-body">
+          <div class="nr-form-group">
+            <label>Repuesto</label>
+            <select v-model.number="detalleRepuesto.id_producto" required class="novarider-select">
+              <option value="" disabled>Seleccione un repuesto</option>
+              <option v-for="repuesto in repuestosDisponibles" :key="repuesto.id_producto" :value="repuesto.id_producto">
+                {{ repuesto.nombre }} - Stock {{ repuesto.stock_disponible }}
+              </option>
+            </select>
+          </div>
+
+          <div class="nr-form-row">
+            <div class="nr-form-group flex-1">
+              <label>Cantidad</label>
+              <input
+                type="number"
+                min="1"
+                :max="stockRepuestoSeleccionado || 1"
+                v-model.number="detalleRepuesto.cantidad"
+                required
+                class="novarider-input form-input-plain"
+              >
+            </div>
+            <div class="nr-form-group flex-1">
+              <label>Costo unitario</label>
+              <input type="text" :value="`Bs ${costoRepuestoSeleccionado.toFixed(2)}`" readonly class="novarider-input-disabled">
+            </div>
+          </div>
+
+          <div class="nr-form-group">
+            <label>Descripcion</label>
+            <input type="text" v-model="detalleRepuesto.descripcion" class="novarider-input form-input-plain" placeholder="Detalle de uso del repuesto">
+          </div>
+
+          <div class="service-summary">
+            <span>Subtotal repuestos</span>
+            <strong>Bs {{ subtotalRepuesto.toFixed(2) }}</strong>
+          </div>
+
+          <div v-if="ordenRepuestoActiva && ordenRepuestoActiva.repuestos && ordenRepuestoActiva.repuestos.length" class="repuestos-desglose">
+            <h4>Repuestos ya registrados</h4>
+            <div v-for="repuesto in ordenRepuestoActiva.repuestos" :key="repuesto.id_detalle_ot" class="repuesto-row">
+              <span>{{ repuesto.producto }}</span>
+              <strong>{{ repuesto.cantidad }} x Bs {{ Number(repuesto.costo_unitario || 0).toFixed(2) }}</strong>
+            </div>
+          </div>
+
+          <div class="nr-modal-footer">
+            <button type="button" @click="cerrarModalRepuestoOrden" class="nr-btn-link">Cancelar</button>
+            <button type="submit" class="btn-novarider-primary-submit">
+              Guardar Repuesto
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div v-if="mostrarModalQr" class="nr-modal-overlay" @click="cerrarModalQr">
       <div class="nr-modal qr-modal" @click.stop>
         <div class="nr-modal-header">
@@ -334,12 +402,20 @@
           <button @click="cerrarModalQr" class="nr-btn-close">x</button>
         </div>
         <div class="qr-modal-body">
-          <img :src="qrOrdenUrl" alt="QR de orden de trabajo" class="qr-image">
-          <div class="qr-info" v-if="ordenQrActiva">
-            <strong>#{{ ordenQrActiva.nro_orden }}</strong>
-            <span>{{ ordenQrActiva.motocicleta ? ordenQrActiva.motocicleta.placa : ordenQrActiva.placa_simulada || 'SIN PLACA' }}</span>
-            <span>{{ ordenQrActiva.estado }}</span>
+          <div class="recibo-seguimiento" v-if="ordenQrActiva">
+            <span class="recibo-label">Codigo de seguimiento</span>
+            <strong>{{ ordenQrActiva.codigo_seguimiento }}</strong>
+            <small>Orden #{{ ordenQrActiva.nro_orden }}</small>
+            <img :src="qrOrdenUrl" alt="QR de seguimiento de orden" class="qr-image">
+            <div class="qr-info">
+              <span>{{ ordenQrActiva.motocicleta ? ordenQrActiva.motocicleta.placa : ordenQrActiva.placa_simulada || 'SIN PLACA' }}</span>
+              <span>{{ ordenQrActiva.estado }}</span>
+              <span class="consulta-url">{{ seguimientoUrl(ordenQrActiva) }}</span>
+            </div>
           </div>
+          <button type="button" class="btn-novarider-primary-submit no-print" @click="imprimirReciboSeguimiento">
+            Imprimir recibo
+          </button>
         </div>
       </div>
     </div>
@@ -348,7 +424,7 @@
       <div v-if="mensajeToast" class="nr-toast">
         <div class="toast-content">
           <span class="toast-icon">✅</span>
-          <p>¡Orden lista para entrega!</p>
+          <p>{{ textoToast || '¡Orden lista para entrega!' }}</p>
         </div>
       </div>
     </transition>
@@ -376,7 +452,8 @@ export default {
       busquedaPlaca: '',
       mostrarSugerencias: false,
       showModalServicios: false,
-      serviciosDisponibles: [], // Almacena los servicios obtenidos
+      serviciosDisponibles: [], 
+      estadosOrden: ['Pendiente', 'En proceso', 'Esperando repuestos', 'Listo para entrega', 'Entregado'],
       nuevoServicio: {
         nombre: '',
         descripcion: '',
@@ -384,10 +461,18 @@ export default {
       },
       mostrarModalServicioOrden: false,
       ordenServicioActiva: null,
+      mostrarModalRepuestoOrden: false,
+      ordenRepuestoActiva: null,
       mostrarModalQr: false,
       ordenQrActiva: null,
+      repuestosDisponibles: [],
       detalleServicio: {
         id_servicio: '',
+        cantidad: 1,
+        descripcion: ''
+      },
+      detalleRepuesto: {
+        id_producto: '',
         cantidad: 1,
         descripcion: ''
       },
@@ -431,21 +516,31 @@ export default {
       const cantidad = Number(this.detalleServicio.cantidad || 0);
       return this.precioServicioSeleccionado * cantidad;
     },
+    repuestoSeleccionado() {
+      return this.repuestosDisponibles.find(repuesto => repuesto.id_producto === this.detalleRepuesto.id_producto) || null;
+    },
+    costoRepuestoSeleccionado() {
+      return Number(this.repuestoSeleccionado?.costo || this.repuestoSeleccionado?.precio_venta || 0);
+    },
+    stockRepuestoSeleccionado() {
+      return Number(this.repuestoSeleccionado?.stock_disponible || 0);
+    },
+    subtotalRepuesto() {
+      return this.costoRepuestoSeleccionado * Number(this.detalleRepuesto.cantidad || 0);
+    },
     qrOrdenUrl() {
       if (!this.ordenQrActiva) return '';
-
       return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(this.qrOrdenContenido(this.ordenQrActiva))}`;
     }
   },
   mounted() { 
     this.cargarOrdenes(); 
-    this.cargarAuxiliaresBD(); 
+    this.cargarAuxiliaresBD();
   },
   methods: {
     async abrirModalServicios() {
       try {
-        // Asumiendo que existe un método en tu servicio para listar tservicios
-        const res = await tallerService.obtenerServicios(); 
+        const res = await tallerService.obtenerServicios();
         this.serviciosDisponibles = res.data;
         this.showModalServicios = true;
       } catch (e) {
@@ -463,13 +558,11 @@ export default {
           ...this.serviciosDisponibles.filter(servicio => servicio.id_servicio !== servicioGuardado.id_servicio),
           servicioGuardado
         ].sort((a, b) => a.nombre.localeCompare(b.nombre));
-
         this.nuevoServicio = {
           nombre: '',
           descripcion: '',
           precio_estimado: 0
         };
-
         this.mostrarNotificacion('Servicio registrado correctamente.');
       } catch (e) {
         console.error("Error al guardar servicio:", e);
@@ -502,6 +595,31 @@ export default {
       this.ordenServicioActiva = null;
     },
 
+    async abrirModalRepuestoOrden(orden) {
+      try {
+        if (this.repuestosDisponibles.length === 0) {
+          const res = await tallerService.obtenerRepuestosDisponibles();
+          this.repuestosDisponibles = res.data.repuestos || [];
+        }
+
+        this.ordenRepuestoActiva = orden;
+        this.detalleRepuesto = {
+          id_producto: '',
+          cantidad: 1,
+          descripcion: ''
+        };
+        this.mostrarModalRepuestoOrden = true;
+      } catch (e) {
+        console.error("Error al cargar repuestos:", e);
+        alert("No se pudieron cargar los repuestos.");
+      }
+    },
+
+    cerrarModalRepuestoOrden() {
+      this.mostrarModalRepuestoOrden = false;
+      this.ordenRepuestoActiva = null;
+    },
+
     abrirQrOrden(orden) {
       this.ordenQrActiva = orden;
       this.mostrarModalQr = true;
@@ -513,22 +631,19 @@ export default {
     },
 
     qrOrdenContenido(orden) {
-      const placa = orden.motocicleta ? orden.motocicleta.placa : orden.placa_simulada || 'SIN PLACA';
-      const mecanico = this.formatMecanico(orden.empleado);
+      return this.seguimientoUrl(orden);
+    },
 
-      return [
-        'NovaRider - Orden de trabajo',
-        `Orden: ${orden.nro_orden}`,
-        `Placa: ${placa}`,
-        `Estado: ${orden.estado}`,
-        `Mecanico: ${mecanico}`,
-        `Fecha ingreso: ${orden.fecha_ingreso}`
-      ].join('\n');
+    seguimientoUrl(orden) {
+      return `${window.location.origin}/seguimiento/${orden.codigo_seguimiento}`;
+    },
+
+    imprimirReciboSeguimiento() {
+      window.print();
     },
 
     async guardarServicioOrden() {
       if (!this.ordenServicioActiva) return;
-
       try {
         await tallerService.guardarServicioOrden(this.ordenServicioActiva.id_orden, this.detalleServicio);
         this.cerrarModalServicioOrden();
@@ -539,12 +654,40 @@ export default {
       }
     },
 
+    async guardarRepuestoOrden() {
+      if (!this.ordenRepuestoActiva) return;
+      try {
+        const res = await tallerService.guardarRepuestoOrden(this.ordenRepuestoActiva.id_orden, this.detalleRepuesto);
+        const detalle = res.data.detalle;
+        const producto = detalle.producto;
+
+        if (!this.ordenRepuestoActiva.repuestos) this.ordenRepuestoActiva.repuestos = [];
+        this.ordenRepuestoActiva.repuestos.push({
+          id_detalle_ot: detalle.id_detalle_ot,
+          producto: producto?.nombre || this.repuestoSeleccionado?.nombre || 'Repuesto',
+          cantidad: detalle.cantidad,
+          costo_unitario: detalle.costo_unitario,
+          subtotal: detalle.subtotal
+        });
+        this.repuestosDisponibles = this.repuestosDisponibles
+          .map(repuesto => repuesto.id_producto === this.detalleRepuesto.id_producto
+            ? { ...repuesto, stock_disponible: repuesto.stock_disponible - this.detalleRepuesto.cantidad }
+            : repuesto)
+          .filter(repuesto => repuesto.stock_disponible > 0);
+        this.cerrarModalRepuestoOrden();
+        this.mostrarNotificacion('Repuesto guardado en la orden.');
+      } catch (e) {
+        console.error("Error al guardar repuesto:", e);
+        alert(e.response?.data?.message || "No se pudo guardar el repuesto en la orden.");
+      }
+    },
+
     mostrarNotificacion(mensaje = '¡Acción completada con éxito!') {
       this.textoToast = mensaje;
       this.mensajeToast = true;
       setTimeout(() => {
         this.mensajeToast = false;
-      }, 3000); 
+      }, 3000);
     },
 
     manejarValidacionExitosa(payload) {
@@ -562,9 +705,24 @@ export default {
       try {
         await tallerService.cambiarEstadoOrden(orden.id_orden, estadoObjetivo);
         orden.estado = estadoObjetivo;
-        this.mostrarNotificacion('¡Orden lista para entrega!'); 
+        this.mostrarNotificacion('¡Orden lista para entrega!');
       } catch (error) {
         console.error("Error:", error);
+      }
+    },
+
+    async cambiarEstadoOrden(orden, estado) {
+      const estadoAnterior = orden.estado;
+      orden.estado = estado;
+
+      try {
+        const res = await tallerService.cambiarEstadoOrden(orden.id_orden, estado);
+        orden.estado = res.data.orden?.estado || estado;
+        this.mostrarNotificacion(`Estado actualizado: ${orden.estado}`);
+      } catch (error) {
+        orden.estado = estadoAnterior;
+        console.error("Error al cambiar estado:", error);
+        alert(error.response?.data?.message || "No se pudo cambiar el estado.");
       }
     },
 
@@ -649,6 +807,10 @@ export default {
     actualizarEstadoOrdenLista(idOrden) {
       const idx = this.ordenes.findIndex(o => o.id_orden === idOrden);
       if (idx !== -1) this.ordenes[idx].estado = 'Listo para entrega';
+    },
+    limitarCantidadServicio() {
+      if (this.detalleServicio.cantidad < 1) this.detalleServicio.cantidad = 1;
+      if (this.detalleServicio.cantidad > 999) this.detalleServicio.cantidad = 999;
     }
   }
 };
@@ -679,11 +841,13 @@ export default {
 .pill-listo { background: #E8F5E9; color: #1B5E20; }
 .pill-entregado { background: #ECEFF1; color: #37474F; }
 .actions-cell { display: flex; justify-content: flex-end; align-items: center; gap: 6px; white-space: nowrap; padding: 12px 24px !important; }
+.estado-select { height: 32px; max-width: 150px; border: 1px solid #E2E4E3; border-radius: 6px; background: #FFFFFF; color: #042D29; font-size: 12px; font-weight: 700; padding: 0 8px; }
 .btn-table-action { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 10px; font-size: 13px; font-weight: 600; border-radius: 6px; cursor: pointer; border: 1px solid #E2E4E3; background-color: #FFFFFF; height: 32px; }
 .btn-ready { color: #1B5E20; border-color: #A5D6A7; background-color: #E8F5E9; }
 .btn-verify { color: #042D29; border-color: #B2C0BF; background-color: #F4F6F6; }
 .btn-delete { color: #B71C1C; border-color: #EF9A9A; background-color: #FFEBEE; }
 .btn-service { color: #6F3F00; border-color: #F5C16C; background-color: #FFF6E5; }
+.btn-part { color: #4A148C; border-color: #D3B8EA; background-color: #F7F0FF; }
 .btn-qr { color: #1E3A78; border-color: #B8C7EA; background-color: #F3F6FF; }
 .btn-table-action:disabled { opacity: 0.62; cursor: not-allowed; }
 .btn-novarider-primary { background: #042D29; color: #FFFFFF; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
@@ -705,14 +869,23 @@ export default {
 .service-summary { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border: 1px solid #E2E4E3; border-radius: 8px; background: #FAFAFA; color: #042D29; }
 .service-summary span { font-size: 13px; font-weight: 600; color: #55574A; }
 .service-summary strong { font-size: 18px; }
+.repuestos-desglose { display: grid; gap: 8px; padding: 12px; border: 1px solid #E2E4E3; border-radius: 8px; background: #FAFAFA; }
+.repuestos-desglose h4 { margin: 0; color: #042D29; font-size: 13px; }
+.repuesto-row { display: flex; justify-content: space-between; gap: 12px; color: #55574A; font-size: 12px; }
+.repuesto-row strong { color: #042D29; white-space: nowrap; }
 .service-create-form { display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid #E2E4E3; border-radius: 8px; background: #FAFAFA; }
 .service-price-field { width: 150px; flex-shrink: 0; }
 .service-form-actions { display: flex; justify-content: flex-end; }
-.qr-modal { max-width: 360px; }
+.qr-modal { max-width: 390px; }
 .qr-modal-body { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.recibo-seguimiento { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; border: 1px dashed #B2C0BF; border-radius: 10px; padding: 18px; text-align: center; }
+.recibo-label { font-size: 12px; font-weight: 700; color: #929079; text-transform: uppercase; }
+.recibo-seguimiento strong { color: #042D29; font-size: 28px; letter-spacing: 1px; }
+.recibo-seguimiento small { color: #55574A; font-weight: 700; }
 .qr-image { width: 220px; height: 220px; border: 1px solid #E2E4E3; border-radius: 8px; padding: 10px; background: #FFFFFF; }
 .qr-info { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #042D29; font-size: 13px; }
 .qr-info strong { font-size: 16px; }
+.consulta-url { max-width: 280px; overflow-wrap: anywhere; color: #55574A; font-size: 11px; }
 .search-autocomplete { position: relative; }
 .suggestions-list { position: absolute; top: 100%; left: 0; width: 100%; background: white; border: 1px solid #E2E4E3; border-radius: 6px; list-style: none; max-height: 150px; overflow-y: auto; z-index: 1000; margin: 4px 0 0 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
 .suggestions-list li { padding: 10px; cursor: pointer; font-size: 13px; }
@@ -724,4 +897,28 @@ export default {
 @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -30px); } to { opacity: 1; transform: translate(-50%, 0); } }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.4s, transform 0.4s; }
 .fade-enter, .fade-leave-to { opacity: 0; transform: translate(-50%, -30px); }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .recibo-seguimiento,
+  .recibo-seguimiento * {
+    visibility: visible;
+  }
+
+  .recibo-seguimiento {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    width: 320px;
+    border: 1px solid #042D29;
+    box-shadow: none;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
 </style>

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Producto;
 use App\Models\Venta;
 use App\Models\Compra;
+use App\Models\OrdenTrabajo;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -71,6 +72,20 @@ class ReporteController extends Controller
                     ->take(50)
                     ->get();
                 break;
+            case 'taller':
+                $data = OrdenTrabajo::with(['motocicleta.cliente', 'empleado', 'detalles.producto'])
+                    ->where('estadoA', true)
+                    ->orderBy('fecha_ingreso', 'DESC')
+                    ->take(50)
+                    ->get();
+                break;
+            case 'caja':
+                $data = Venta::with('cliente')
+                    ->where('estadoA', true)
+                    ->orderBy('fecha_hora', 'DESC')
+                    ->take(50)
+                    ->get();
+                break;
             default:
                 $data = [];
         }
@@ -106,6 +121,17 @@ class ReporteController extends Controller
             case 'ventas':
                 $items = Venta::with('cliente')->where('estadoA', true)->orderBy('fecha_hora', 'DESC')->get();
                 $titulo = 'Reporte de Ventas';
+                break;
+            case 'taller':
+                $items = OrdenTrabajo::with(['motocicleta.cliente', 'empleado', 'detalles.producto'])
+                    ->where('estadoA', true)
+                    ->orderBy('fecha_ingreso', 'DESC')
+                    ->get();
+                $titulo = 'Reporte Operativo de Taller';
+                break;
+            case 'caja':
+                $items = Venta::with('cliente')->where('estadoA', true)->orderBy('fecha_hora', 'DESC')->get();
+                $titulo = 'Reporte de Caja e Ingresos';
                 break;
             case 'sistema':
                 return $this->exportGlobalReport();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 // 🌟 ESTA LÍNEA DE ABAJO ELIMINA LOS 4 ERRORES EN ROJO DE TU EDITOR
 use Illuminate\Support\Facades\DB;
@@ -122,6 +123,10 @@ class CajaController extends Controller
         $descuentoVenta = intval(round(floatval($request->input('descuento', 0))));
         $idCaja = $request->input('id_caja');
         $idCliente = $request->input('id_cliente', 1);
+        $conceptoResumen = collect($request->input('items', []))
+            ->pluck('concepto')
+            ->filter()
+            ->implode(', ');
         
         $user = auth()->user();
         $idEmpleado = $user ? $user->id_empleado : 1;
@@ -141,6 +146,7 @@ class CajaController extends Controller
                 'descuento'    => $descuentoVenta,
                 'total'        => $totalVenta,
                 'metodo_pago'  => $request->input('metodo_pago', 'Efectivo'),
+                'concepto_resumen' => $conceptoResumen ?: $request->input('concepto', 'Venta de caja'),
                 'estadoA'      => 1,
                 'usuarioA'     => $user ? $user->id_usuario : null, 
                 'fechahoraA'   => now()
@@ -185,26 +191,34 @@ class CajaController extends Controller
         }
     }
 
-    public function obtenerVentas()
+    public function obtenerVentas(Request $request)
     {
         try {
-            $ventas = DB::table('tventas')
-                ->leftJoin('TClientes', 'tventas.id_cliente', '=', 'TClientes.id_cliente')
-                ->select(
-                    'tventas.id_venta',
-                    'tventas.nro_factura',
-                    'tventas.fecha_hora',
-                    'tventas.total',
-                    'tventas.metodo_pago',
-                    DB::raw("CONCAT(COALESCE(TClientes.primer_nombre, 'Cliente'), ' ', COALESCE(TClientes.apellido_paterno, 'General')) as cliente_nombre")
-                )
-                ->orderBy('tventas.id_venta', 'DESC')
-                ->get();
+            $ventas = $this->ventasQuery($request)->get();
 
             return response()->json(['ventas' => $ventas]);
         } catch (\Exception $e) {
             return response()->json(['ventas' => []]);
         }
+    }
+
+    public function ventasPdf(Request $request)
+    {
+        $ventas = $this->ventasQuery($request)->get();
+
+        $pdf = Pdf::loadView('reportes.caja_pdf', [
+            'ventas' => $ventas,
+            'filtros' => [
+                'fecha_inicio' => $request->input('fecha_inicio'),
+                'fecha_fin' => $request->input('fecha_fin'),
+                'concepto' => $request->input('concepto'),
+                'solo_efectivo' => $request->boolean('solo_efectivo'),
+            ],
+            'total' => $ventas->sum('total'),
+            'fecha' => now()->format('d/m/Y H:i'),
+        ]);
+
+        return $pdf->download('reporte_caja_' . now()->format('YmdHis') . '.pdf');
     }
 
     public function cerrarCaja(Request $request)
@@ -257,5 +271,40 @@ class CajaController extends Controller
                 'error_msg' => $e->getMessage()
             ]);
         }
+    }
+
+    private function ventasQuery(Request $request)
+    {
+        $query = DB::table('tventas')
+            ->leftJoin('TClientes', 'tventas.id_cliente', '=', 'TClientes.id_cliente')
+            ->select(
+                'tventas.id_venta',
+                'tventas.nro_factura',
+                'tventas.fecha_hora',
+                'tventas.total',
+                'tventas.metodo_pago',
+                'tventas.concepto_resumen',
+                DB::raw("CONCAT(COALESCE(TClientes.primer_nombre, 'Cliente'), ' ', COALESCE(TClientes.apellido_paterno, 'General')) as cliente_nombre")
+            )
+            ->where('tventas.estadoA', true);
+
+        if ($request->filled('fecha_inicio')) {
+            $query->whereDate('tventas.fecha_hora', '>=', $request->input('fecha_inicio'));
+        }
+
+        if ($request->filled('fecha_fin')) {
+            $query->whereDate('tventas.fecha_hora', '<=', $request->input('fecha_fin'));
+        }
+
+        if ($request->filled('concepto')) {
+            $concepto = strtolower($request->input('concepto'));
+            $query->whereRaw('LOWER(tventas.concepto_resumen) LIKE ?', ["%{$concepto}%"]);
+        }
+
+        if ($request->boolean('solo_efectivo')) {
+            $query->whereRaw('LOWER(tventas.metodo_pago) = ?', ['efectivo']);
+        }
+
+        return $query->orderBy('tventas.id_venta', 'DESC');
     }
 }

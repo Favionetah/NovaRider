@@ -15,7 +15,7 @@ async function cargarDatos() {
     data.value = res.data.data
     await nextTick()
     animarTabla()
-  } catch (err) {
+  } catch {
     error.value = 'Error al cargar los datos del reporte'
   } finally {
     loading.value = false
@@ -63,6 +63,8 @@ watch(tipo, cargarDatos)
         <button class="btn-tab" :class="{ active: tipo === 'usuarios' }" @click="tipo = 'usuarios'">Personal</button>
         <button class="btn-tab" :class="{ active: tipo === 'inventario' }" @click="tipo = 'inventario'">Inventario</button>
         <button class="btn-tab" :class="{ active: tipo === 'ventas' }" @click="tipo = 'ventas'">Ventas</button>
+        <button class="btn-tab" :class="{ active: tipo === 'taller' }" @click="tipo = 'taller'">Taller</button>
+        <button class="btn-tab" :class="{ active: tipo === 'caja' }" @click="tipo = 'caja'">Caja</button>
       </div>
     </div>
 
@@ -75,6 +77,9 @@ watch(tipo, cargarDatos)
           </button>
         </div>
         
+        <div v-if="loading" class="cargando">Cargando reporte...</div>
+        <div v-else-if="error" class="cargando">{{ error }}</div>
+        <div v-else-if="data.length === 0" class="cargando">No hay datos para este reporte.</div>
         <div v-else class="tabla-wrapper">
           <table class="tabla-reporte">
             <thead>
@@ -104,9 +109,21 @@ watch(tipo, cargarDatos)
                 <th>Total</th>
                 <th>Método</th>
               </tr>
+              <tr v-else-if="tipo === 'taller'">
+                <th>Orden</th>
+                <th>Moto</th>
+                <th>Estado</th>
+                <th>Repuestos</th>
+              </tr>
+              <tr v-else-if="tipo === 'caja'">
+                <th>Fecha</th>
+                <th>Recibo</th>
+                <th>Concepto</th>
+                <th>Total</th>
+              </tr>
             </thead>
             <tbody>
-              <tr v-for="item in data" :key="item.id_cliente || item.id_motocicleta || item.id_usuario || item.id_producto || item.id_venta">
+              <tr v-for="item in data" :key="item.id_cliente || item.id_motocicleta || item.id_usuario || item.id_producto || item.id_venta || item.id_orden">
                 <template v-if="tipo === 'clientes'">
                   <td><strong>{{ item.primer_nombre }} {{ item.apellido_paterno }}</strong></td>
                   <td>{{ item.ci }}</td>
@@ -132,6 +149,23 @@ watch(tipo, cargarDatos)
                   <td>{{ item.cliente ? `${item.cliente.primer_nombre} ${item.cliente.apellido_paterno}` : 'Cliente Final' }}</td>
                   <td><strong>{{ formatearMoneda(item.total) }}</strong></td>
                   <td>{{ item.metodo_pago }}</td>
+                </template>
+                <template v-else-if="tipo === 'taller'">
+                  <td><strong>{{ item.nro_orden }}</strong></td>
+                  <td>{{ item.motocicleta ? `${item.motocicleta.marca} ${item.motocicleta.modelo}` : 'Sin moto' }}</td>
+                  <td>{{ item.estado }}</td>
+                  <td>
+                    <span v-if="item.detalles?.filter(d => d.id_producto).length">
+                      {{ item.detalles.filter(d => d.id_producto).map(d => `${d.producto?.nombre || 'Repuesto'} x${d.cantidad}`).join(', ') }}
+                    </span>
+                    <span v-else>Sin repuestos</span>
+                  </td>
+                </template>
+                <template v-else-if="tipo === 'caja'">
+                  <td>{{ new Date(item.fecha_hora).toLocaleDateString() }}</td>
+                  <td>{{ item.nro_factura }}</td>
+                  <td>{{ item.concepto_resumen || 'Venta de caja' }}</td>
+                  <td><strong>{{ formatearMoneda(item.total) }}</strong></td>
                 </template>
               </tr>
             </tbody>

@@ -10,6 +10,11 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
+      path: '/seguimiento/:codigo?',
+      name: 'seguimiento-publico',
+      component: () => import('@/views/seguimiento/SeguimientoPublicoView.vue'),
+    },
+    {
       path: '/',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),

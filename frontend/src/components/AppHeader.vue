@@ -96,6 +96,8 @@ async function cerrarSesion() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
+  min-height: 64px;
   padding: 12px 32px;
   background: #042D29;
   color: #FFFFFF;
@@ -107,7 +109,8 @@ async function cerrarSesion() {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 24px;
+  min-width: 0;
 }
 
 .header-logo {
@@ -133,10 +136,17 @@ async function cerrarSesion() {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.header-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-link {
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
@@ -160,7 +170,8 @@ async function cerrarSesion() {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .header-rol-badge {
@@ -225,5 +236,28 @@ async function cerrarSesion() {
 .btn-logout:hover {
   background: #741102;
   border-color: #741102;
+}
+
+@media (max-width: 1180px) {
+  .app-header {
+    padding: 10px 18px;
+  }
+
+  .header-left {
+    gap: 16px;
+  }
+
+  .header-title {
+    font-size: 18px;
+  }
+
+  .nav-link {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .cambiar-texto {
+    display: none;
+  }
 }
 </style>

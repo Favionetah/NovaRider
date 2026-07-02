@@ -34,6 +34,10 @@
                 <tr><th>Producto</th><th>Stock</th><th>P. Venta</th></tr>
             @elseif($tipo === 'ventas')
                 <tr><th>Fecha</th><th>Cliente</th><th>Metodo</th><th class="text-right">Total</th></tr>
+            @elseif($tipo === 'taller')
+                <tr><th>Orden</th><th>Fecha</th><th>Moto</th><th>Estado</th><th>Repuestos</th></tr>
+            @elseif($tipo === 'caja')
+                <tr><th>Fecha</th><th>Recibo</th><th>Concepto</th><th>Metodo</th><th class="text-right">Total</th></tr>
             @endif
         </thead>
         <tbody>
@@ -60,6 +64,24 @@
                     @elseif($tipo === 'ventas')
                         <td>{{ date('d/m/Y', strtotime($item->fecha_hora)) }}</td>
                         <td>{{ $item->cliente ? $item->cliente->primer_nombre : 'C. Final' }}</td>
+                        <td>{{ $item->metodo_pago }}</td>
+                        <td class="text-right">{{ number_format($item->total, 2) }}</td>
+                    @elseif($tipo === 'taller')
+                        <td>{{ $item->nro_orden }}</td>
+                        <td>{{ $item->fecha_ingreso ? date('d/m/Y', strtotime($item->fecha_ingreso)) : '—' }}</td>
+                        <td>{{ $item->motocicleta ? $item->motocicleta->marca . ' ' . $item->motocicleta->modelo . ' (' . $item->motocicleta->placa . ')' : '—' }}</td>
+                        <td>{{ $item->estado }}</td>
+                        <td>
+                            @forelse($item->detalles->whereNotNull('id_producto') as $detalle)
+                                {{ $detalle->producto->nombre ?? 'Repuesto' }} x{{ $detalle->cantidad }}<br>
+                            @empty
+                                Sin repuestos
+                            @endforelse
+                        </td>
+                    @elseif($tipo === 'caja')
+                        <td>{{ date('d/m/Y', strtotime($item->fecha_hora)) }}</td>
+                        <td>{{ $item->nro_factura }}</td>
+                        <td>{{ $item->concepto_resumen ?: 'Venta de caja' }}</td>
                         <td>{{ $item->metodo_pago }}</td>
                         <td class="text-right">{{ number_format($item->total, 2) }}</td>
                     @endif

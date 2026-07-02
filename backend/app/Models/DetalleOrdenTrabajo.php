@@ -13,9 +13,11 @@ class DetalleOrdenTrabajo extends Model
     protected $fillable = [
         'id_orden',
         'id_servicio',
+        'id_producto',
         'descripcion',
         'cantidad',
         'precio_labor',
+        'costo_unitario',
         'subtotal',
         'estadoA',
         'usuarioA',
@@ -30,5 +32,10 @@ class DetalleOrdenTrabajo extends Model
     public function servicio()
     {
         return $this->belongsTo(Servicio::class, 'id_servicio');
+    }
+
+    public function producto()
+    {
+        return $this->belongsTo(Producto::class, 'id_producto');
     }
 }

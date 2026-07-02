@@ -44,12 +44,20 @@ const tallerService = {
     return api.get('/servicios');
   },
 
+  obtenerRepuestosDisponibles() {
+    return api.get('/ordenes/repuestos-disponibles');
+  },
+
   crearServicio(payload) {
     return api.post('/servicios', payload);
   },
 
   guardarServicioOrden(idOrden, payload) {
     return api.post(`/ordenes/${idOrden}/servicios`, payload);
+  },
+
+  guardarRepuestoOrden(idOrden, payload) {
+    return api.post(`/ordenes/${idOrden}/repuestos`, payload);
   }
 };
 

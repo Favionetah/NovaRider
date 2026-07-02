@@ -93,6 +93,10 @@ async function iniciarSesion() {
     enviando.value = false
   }
 }
+
+function irSeguimiento() {
+  router.push('/seguimiento')
+}
 </script>
 
 <template>
@@ -166,6 +170,9 @@ async function iniciarSesion() {
             <span>{{ enviando ? 'Ingresando...' : 'Ingresar' }}</span>
             <span v-if="!enviando" class="btn-arrow">&rarr;</span>
             <span v-if="enviando" class="spinner" />
+          </button>
+          <button type="button" class="btn-seguimiento" @click="irSeguimiento">
+            Consultar reparacion
           </button>
         </form>
       </div>
@@ -397,6 +404,25 @@ async function iniciarSesion() {
   background: #D1D5DB;
   color: #929079;
   cursor: not-allowed;
+}
+
+.btn-seguimiento {
+  width: 100%;
+  padding: 12px 14px;
+  background: #FFFFFF;
+  color: #042D29;
+  border: 1px solid #D1D5DB;
+  border-radius: 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-seguimiento:hover {
+  border-color: #042D29;
+  color: #741102;
 }
 
 .btn-arrow {

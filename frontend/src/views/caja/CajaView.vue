@@ -30,7 +30,10 @@ const listaClientes = ref([
 
 // Filtros e Historial
 const criterioBusqueda = ref('')
-const filtroFecha = ref('')
+const filtroFechaInicio = ref('')
+const filtroFechaFin = ref('')
+const filtroConcepto = ref('')
+const soloEfectivo = ref(false)
 const historialVentas = ref([])
 
 onMounted(async () => {
@@ -76,7 +79,13 @@ async function cargarClientesDesdeBD() {
 
 async function cargarHistorialDesdeBD() {
   try {
-    const res = await api.get('/caja/ventas')
+    const params = {
+      fecha_inicio: filtroFechaInicio.value || undefined,
+      fecha_fin: filtroFechaFin.value || undefined,
+      concepto: filtroConcepto.value || undefined,
+      solo_efectivo: soloEfectivo.value ? 1 : undefined
+    }
+    const res = await api.get('/caja/ventas', { params })
     historialVentas.value = (res.data.ventas || []).map((v) => ({
       id_venta: v.id_venta,
       nroRecibo: v.nro_factura || `VTA-${String(v.id_venta).padStart(3, '0')}`,
@@ -84,6 +93,7 @@ async function cargarHistorialDesdeBD() {
       cliente: v.cliente_nombre || 'Cliente General',
       placa: v.placa || 'S/P',
       metodo_pago: v.metodo_pago || 'Efectivo',
+      concepto: v.concepto_resumen || 'Venta de caja',
       total: parseFloat(v.total || 0)
     }))
     saldoDigital.value = historialVentas.value.reduce((acc, v) => acc + v.total, 0)
@@ -144,7 +154,8 @@ async function handleProcesarVenta(datosVentaForm) {
       total: datosVentaForm.total,
       subtotal: datosVentaForm.total,
       descuento: 0,
-      metodo_pago: datosVentaForm.metodo_pago
+      metodo_pago: datosVentaForm.metodo_pago,
+      items: datosVentaForm.items
     })
 
     if (res.data.status === 'success') {
@@ -196,11 +207,29 @@ const ventasFiltradas = computed(() => {
     const coincideCriterio =
       v.nroRecibo.toLowerCase().includes(criterioBusqueda.value.toLowerCase()) ||
       v.cliente.toLowerCase().includes(criterioBusqueda.value.toLowerCase()) ||
+      v.concepto.toLowerCase().includes(criterioBusqueda.value.toLowerCase()) ||
       v.metodo_pago.toLowerCase().includes(criterioBusqueda.value.toLowerCase())
-    const coincideFecha = filtroFecha.value ? v.fecha === filtroFecha.value : true
-    return coincideCriterio && coincideFecha
+    return coincideCriterio
   })
 })
+
+function limpiarFiltrosCaja() {
+  criterioBusqueda.value = ''
+  filtroFechaInicio.value = ''
+  filtroFechaFin.value = ''
+  filtroConcepto.value = ''
+  soloEfectivo.value = false
+  cargarHistorialDesdeBD()
+}
+
+function exportarCajaPdf() {
+  const params = new URLSearchParams()
+  if (filtroFechaInicio.value) params.set('fecha_inicio', filtroFechaInicio.value)
+  if (filtroFechaFin.value) params.set('fecha_fin', filtroFechaFin.value)
+  if (filtroConcepto.value) params.set('concepto', filtroConcepto.value)
+  if (soloEfectivo.value) params.set('solo_efectivo', '1')
+  window.open(`http://localhost:8000/caja/ventas/pdf?${params.toString()}`, '_blank')
+}
 </script>
 
 <template>
@@ -272,6 +301,7 @@ const ventasFiltradas = computed(() => {
     <div class="historial-seccion-card" :class="{ 'blur-layout': !cajaAbierta }">
       <div class="tabs-header">
         <button class="active">Historial de Operaciones</button>
+        <button class="btn-exportar-caja" @click="exportarCajaPdf">Exportar PDF</button>
       </div>
 
       <div class="tabs-content">
@@ -279,11 +309,27 @@ const ventasFiltradas = computed(() => {
           <div class="busqueda-grid">
             <div class="search-input-group">
               <label>Buscador Inteligente</label>
-              <input v-model="criterioBusqueda" type="text" placeholder="Buscar por N° Recibo, Cliente o Método..." />
+              <input v-model="criterioBusqueda" type="text" placeholder="Buscar por recibo, cliente, concepto o metodo..." />
             </div>
             <div class="search-input-group">
-              <label>Filtrar por Fecha exacta</label>
-              <input v-model="filtroFecha" type="date" />
+              <label>Desde</label>
+              <input v-model="filtroFechaInicio" type="date" @change="cargarHistorialDesdeBD" />
+            </div>
+            <div class="search-input-group">
+              <label>Hasta</label>
+              <input v-model="filtroFechaFin" type="date" @change="cargarHistorialDesdeBD" />
+            </div>
+            <div class="search-input-group">
+              <label>Concepto</label>
+              <input v-model="filtroConcepto" type="text" placeholder="Ej. aceite" @keyup.enter="cargarHistorialDesdeBD" />
+            </div>
+            <div class="filter-actions">
+              <label class="check-filter">
+                <input v-model="soloEfectivo" type="checkbox" @change="cargarHistorialDesdeBD">
+                Solo efectivo
+              </label>
+              <button type="button" @click="cargarHistorialDesdeBD">Aplicar</button>
+              <button type="button" class="btn-clear" @click="limpiarFiltrosCaja">Limpiar</button>
             </div>
           </div>
 
@@ -293,13 +339,14 @@ const ventasFiltradas = computed(() => {
                 <tr>
                   <th>N° Recibo / Fecha</th>
                   <th>Cliente Beneficiario</th>
+                  <th>Concepto</th>
                   <th>Método</th>
                   <th class="text-right">Total Cobrado</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="ventasFiltradas.length === 0">
-                  <td colspan="4" class="text-center-empty">No se encontraron registros en el historial.</td>
+                  <td colspan="5" class="text-center-empty">No se encontraron registros en el historial.</td>
                 </tr>
                 <tr v-for="venta in ventasFiltradas" :key="venta.id_venta">
                   <td>
@@ -310,6 +357,7 @@ const ventasFiltradas = computed(() => {
                     <span class="cliente-nombre">{{ venta.cliente }}</span>
                     <span class="cliente-placa" style="font-size: 11px; color:#929079; display:block;">Placa: {{ venta.placa }}</span>
                   </td>
+                  <td>{{ venta.concepto }}</td>
                   <td><span class="metodo-badge">{{ venta.metodo_pago }}</span></td>
                   <td class="td-monto">Bs. {{ venta.total.toFixed(2) }}</td>
                 </tr>
@@ -414,13 +462,18 @@ const ventasFiltradas = computed(() => {
 
 /* Historial */
 .historial-seccion-card { background: #FFFFFF; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); overflow: hidden; }
-.tabs-header { border-bottom: 1px solid #E5E7EB; background: #FAFAFA; padding: 0 24px; }
+.tabs-header { border-bottom: 1px solid #E5E7EB; background: #FAFAFA; padding: 0 24px; display: flex; justify-content: space-between; align-items: center; }
 .tabs-header button { background: none; border: none; padding: 16px 4px; font-size: 14px; font-weight: 600; color: #042D29; cursor: pointer; border-bottom: 2px solid #042D29; }
+.tabs-header .btn-exportar-caja { border: 1px solid #042D29; border-radius: 8px; padding: 8px 12px; background: #FFFFFF; }
 .tabs-content { padding: 24px; }
-.busqueda-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
+.busqueda-grid { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(140px, 1fr)) auto; gap: 16px; margin-bottom: 20px; align-items: end; }
 .search-input-group { display: flex; flex-direction: column; gap: 4px; }
 .search-input-group label { font-size: 12px; font-weight: 600; color: #4B5563; text-transform: uppercase; }
 .search-input-group input { padding: 10px 12px; border: 1.5px solid #D1D5DB; border-radius: 8px; font-size: 13px; outline: none; }
+.filter-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.filter-actions button { border: none; border-radius: 8px; background: #042D29; color: #FFFFFF; font-weight: 700; padding: 10px 12px; cursor: pointer; }
+.filter-actions .btn-clear { background: #929079; }
+.check-filter { display: flex; align-items: center; gap: 6px; color: #042D29; font-size: 12px; font-weight: 700; }
 .tabla-contenedor { overflow-x: auto; }
 .tabla-contenido { width: 100%; border-collapse: collapse; text-align: left; }
 .tabla-contenido th { padding: 12px 16px; font-size: 12px; font-weight: 600; color: #4B5563; background: #F9F9F7; text-transform: uppercase; }
