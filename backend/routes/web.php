@@ -30,6 +30,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/cambiar-contrasena', [AuthController::class, 'cambiarContrasena']);
+    Route::get('/reportes/pdf', [ReporteController::class, 'exportPdf']);
 
     Route::middleware('role:1')->group(function () {
         Route::get('/roles', [UsuarioController::class, 'roles']);
@@ -54,7 +55,6 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/reportes/stats', [ReporteController::class, 'systemStats']);
         Route::get('/reportes/data', [ReporteController::class, 'data']);
-        Route::get('/reportes/pdf', [ReporteController::class, 'exportPdf']);
 
         // --- Módulo Caja y Ventas ---
         Route::get('/caja/estado', [CajaController::class, 'obtenerEstadoCaja']);
