@@ -174,6 +174,18 @@ class ClienteController extends Controller
     public function destroy($id)
     {
         $cliente = Cliente::findOrFail($id);
+
+        // Verificar si alguna de sus motos tiene órdenes de trabajo activas
+        $ordenesActivas = \App\Models\OrdenTrabajo::whereIn('id_motocicleta', $cliente->motocicletas->pluck('id_motocicleta'))
+            ->whereNotIn('estado', ['Listo para entrega'])
+            ->exists();
+
+        if ($ordenesActivas) {
+            return response()->json([
+                'message' => 'No se puede desactivar el cliente porque tiene motocicletas con reparaciones pendientes o en curso.'
+            ], 422);
+        }
+
         $usuarioId = auth()->id();
 
         $cliente->update([

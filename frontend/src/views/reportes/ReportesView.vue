@@ -67,8 +67,6 @@ watch(tipo, cargarDatos)
     </div>
 
     <div class="content-container">
-      <div v-if="error" class="mensaje-error">{{ error }}</div>
-      
       <div class="content-card">
         <div class="header-previa">
           <h3>Vista previa del reporte</h3>

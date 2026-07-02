@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useClientesStore } from '@/stores/clientesStore'
+import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
   cliente: { type: Object, default: null },
@@ -8,6 +9,7 @@ const props = defineProps({
 const emit = defineEmits(['cerrar'])
 
 const store = useClientesStore()
+const toast = useToastStore()
 const enviando = ref(false)
 const mensajeError = ref('')
 
@@ -34,6 +36,12 @@ const errores = ref({
 })
 
 const esEdicion = computed(() => !!props.cliente)
+
+const maxFechaNacimiento = computed(() => {
+  const hoy = new Date()
+  const fecha = new Date(hoy.getFullYear() - 18, hoy.getMonth(), hoy.getDate())
+  return fecha.toISOString().split('T')[0]
+})
 
 const calcularEdad = (fecha) => {
   if (!fecha) return 0
@@ -74,21 +82,40 @@ const validarCampo = (campo, valor) => {
     case 'ci':
       if (!valor) errores.value.ci = 'La cédula de identidad es obligatoria'
       else if (!/^\d+$/.test(valor)) errores.value.ci = 'La cédula debe contener solo números'
+      else if (valor.length < 5) errores.value.ci = 'La cédula debe tener al menos 5 dígitos'
+      else if (valor.length > 15) errores.value.ci = 'La cédula no puede exceder los 15 dígitos'
       else errores.value.ci = ''
       break
     case 'primer_nombre':
       if (!valor) errores.value.primer_nombre = 'El nombre es obligatorio'
       else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor)) errores.value.primer_nombre = 'Solo se permiten letras'
+      else if (valor.length < 2) errores.value.primer_nombre = 'El nombre debe tener al menos 2 caracteres'
+      else if (valor.length > 50) errores.value.primer_nombre = 'El nombre no puede exceder los 50 caracteres'
       else errores.value.primer_nombre = ''
+      break
+    case 'segundo_nombre':
+      if (valor && valor.length > 50) {
+        errores.value.segundo_nombre = 'El segundo nombre no puede exceder los 50 caracteres'
+      } else {
+        errores.value.segundo_nombre = ''
+      }
       break
     case 'apellido_paterno':
       if (!valor) errores.value.apellido_paterno = 'El apellido paterno es obligatorio'
       else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor)) errores.value.apellido_paterno = 'Solo se permiten letras'
+      else if (valor.length < 2) errores.value.apellido_paterno = 'El apellido debe tener al menos 2 caracteres'
+      else if (valor.length > 50) errores.value.apellido_paterno = 'El apellido no puede exceder los 50 caracteres'
       else errores.value.apellido_paterno = ''
       break
     case 'apellido_materno':
-      if (valor && !/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor)) {
-        errores.value.apellido_materno = 'Solo se permiten letras'
+      if (valor) {
+        if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(valor)) {
+          errores.value.apellido_materno = 'Solo se permiten letras'
+        } else if (valor.length > 50) {
+          errores.value.apellido_materno = 'El apellido no puede exceder los 50 caracteres'
+        } else {
+          errores.value.apellido_materno = ''
+        }
       } else {
         errores.value.apellido_materno = ''
       }
@@ -132,8 +159,8 @@ const validarCampo = (campo, valor) => {
       }
       break
     case 'direccion':
-      if (valor && valor.length > 100) {
-        errores.value.direccion = 'La dirección no puede exceder los 100 caracteres'
+      if (valor && valor.length > 25) {
+        errores.value.direccion = 'La dirección no puede exceder los 25 caracteres'
       } else {
         errores.value.direccion = ''
       }
@@ -185,7 +212,7 @@ function validar() {
   const hayErrores = Object.values(errores.value).some(error => error !== '')
   if (hayErrores) {
     const listaErrores = Object.values(errores.value).filter(e => e !== '').join('\n')
-    alert('Por favor corrija los siguientes errores:\n\n' + listaErrores)
+    toast.error('Por favor corrija los errores en el formulario')
     return false
   }
 
@@ -204,12 +231,16 @@ async function guardar() {
   try {
     if (esEdicion.value) {
       await store.actualizar(props.cliente.id_cliente, form.value)
+      toast.success('Cliente actualizado exitosamente')
     } else {
       await store.crear(form.value)
+      toast.success('Cliente registrado exitosamente')
     }
     emit('cerrar')
   } catch (error) {
-    mensajeError.value = error.response?.data?.message || 'Error al guardar cliente'
+    const errorMsg = error.response?.data?.message || 'Error al guardar cliente'
+    mensajeError.value = errorMsg
+    toast.error(errorMsg)
   } finally {
     enviando.value = false
   }
@@ -217,7 +248,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="emit('cerrar')">
+  <div class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
         <h2>{{ esEdicion ? 'Editar Cliente' : 'Nuevo Cliente' }}</h2>
@@ -235,26 +266,27 @@ async function guardar() {
           </div>
           <div class="campo" :class="{ 'has-error': errores.primer_nombre }">
             <label for="primer_nombre">Primer Nombre</label>
-            <input id="primer_nombre" v-model="form.primer_nombre" type="text" @keypress="soloLetras" />
+            <input id="primer_nombre" v-model="form.primer_nombre" type="text" @keypress="soloLetras" maxlength="50" />
             <p v-if="errores.primer_nombre" class="field-error">{{ errores.primer_nombre }}</p>
           </div>
-          <div class="campo">
+          <div class="campo" :class="{ 'has-error': errores.segundo_nombre }">
             <label for="segundo_nombre">Segundo Nombre</label>
-            <input id="segundo_nombre" v-model="form.segundo_nombre" type="text" @keypress="soloLetras" />
+            <input id="segundo_nombre" v-model="form.segundo_nombre" type="text" @keypress="soloLetras" maxlength="50" />
+            <p v-if="errores.segundo_nombre" class="field-error">{{ errores.segundo_nombre }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.apellido_paterno }">
             <label for="apellido_paterno">Apellido Paterno</label>
-            <input id="apellido_paterno" v-model="form.apellido_paterno" type="text" @keypress="soloLetras" />
+            <input id="apellido_paterno" v-model="form.apellido_paterno" type="text" @keypress="soloLetras" maxlength="50" />
             <p v-if="errores.apellido_paterno" class="field-error">{{ errores.apellido_paterno }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.apellido_materno }">
             <label for="apellido_materno">Apellido Materno</label>
-            <input id="apellido_materno" v-model="form.apellido_materno" type="text" @keypress="soloLetras" />
+            <input id="apellido_materno" v-model="form.apellido_materno" type="text" @keypress="soloLetras" maxlength="50" />
             <p v-if="errores.apellido_materno" class="field-error">{{ errores.apellido_materno }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.fecha_nacimiento }">
             <label for="fecha_nacimiento">Fecha de Nacimiento</label>
-            <input id="fecha_nacimiento" v-model="form.fecha_nacimiento" type="date" />
+            <input id="fecha_nacimiento" v-model="form.fecha_nacimiento" type="date" :max="maxFechaNacimiento" />
             <p v-if="errores.fecha_nacimiento" class="field-error">{{ errores.fecha_nacimiento }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.telefono }">
@@ -270,22 +302,22 @@ async function guardar() {
           <div class="campo campo-doble" :class="{ 'has-error': errores.direccion }">
             <div class="label-with-counter">
               <label for="direccion">Dirección</label>
-              <span class="counter" :class="{ 'counter-error': form.direccion?.length > 100 }">
-                {{ form.direccion?.length || 0 }}/100
+              <span class="counter" :class="{ 'counter-error': form.direccion?.length > 25 }">
+                {{ form.direccion?.length || 0 }}/25
               </span>
             </div>
-            <textarea id="direccion" v-model="form.direccion" rows="3" maxlength="100"></textarea>
+            <textarea id="direccion" v-model="form.direccion" rows="2" maxlength="25"></textarea>
             <p v-if="errores.direccion" class="field-error">{{ errores.direccion }}</p>
           </div>
         </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-cancelar" @click="emit('cerrar')">Cancelar</button>
-          <button type="submit" class="btn-guardar" :disabled="enviando">
-            {{ enviando ? 'Guardando...' : 'Guardar' }}
-          </button>
-        </div>
       </form>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancelar" @click="emit('cerrar')">Cancelar</button>
+        <button type="button" class="btn-guardar" :disabled="enviando" @click="guardar">
+          {{ enviando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -304,14 +336,17 @@ async function guardar() {
 
 .modal-card {
   width: 100%;
-  max-width: 620px;
+  max-width: 700px;
+  max-height: 90vh;
   background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -334,6 +369,8 @@ async function guardar() {
 }
 
 .modal-form {
+  flex-grow: 1;
+  overflow-y: auto;
   padding: 24px;
 }
 
@@ -398,11 +435,13 @@ async function guardar() {
 }
 
 .modal-footer {
+  flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 0 24px 24px;
-  margin-top: 28px;
+  padding: 20px 24px;
+  border-top: 1px solid #E5E7EB;
+  background: #ffffff;
 }
 
 .btn-cancelar,

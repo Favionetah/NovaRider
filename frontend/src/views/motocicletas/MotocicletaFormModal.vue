@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useMotocicletasStore } from '@/stores/motocicletasStore'
+import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
   motocicleta: { type: Object, default: null },
@@ -9,6 +10,7 @@ const props = defineProps({
 const emit = defineEmits(['cerrar'])
 
 const store = useMotocicletasStore()
+const toast = useToastStore()
 const enviando = ref(false)
 const mensajeError = ref('')
 
@@ -32,6 +34,9 @@ const errores = ref({
   marca: '',
   modelo: '',
   anio: '',
+  nro_chasis: '',
+  nro_motor: '',
+  color: '',
   cilindrada: '',
 })
 
@@ -63,16 +68,21 @@ const validarCampo = (campo, valor) => {
       break
     case 'placa':
       if (!valor) errores.value.placa = 'La placa es obligatoria'
+      else if (valor.length < 3) errores.value.placa = 'La placa debe tener al menos 3 caracteres'
+      else if (valor.length > 10) errores.value.placa = 'La placa no puede exceder los 10 caracteres'
       else errores.value.placa = ''
       break
     case 'marca':
       if (!valor) errores.value.marca = 'La marca es obligatoria'
       else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s.-]+$/.test(valor)) errores.value.marca = 'La marca solo debe contener letras'
+      else if (valor.length < 2) errores.value.marca = 'La marca debe tener al menos 2 caracteres'
+      else if (valor.length > 30) errores.value.marca = 'La marca no puede exceder los 30 caracteres'
       else errores.value.marca = ''
       break
     case 'modelo':
       if (!valor) errores.value.modelo = 'El modelo es obligatorio'
       else if (!/^[a-zA-Z0-9\s.-]+$/.test(valor)) errores.value.modelo = 'El modelo contiene caracteres no válidos'
+      else if (valor.length > 30) errores.value.modelo = 'El modelo no puede exceder los 30 caracteres'
       else errores.value.modelo = ''
       break
     case 'anio':
@@ -86,12 +96,35 @@ const validarCampo = (campo, valor) => {
         errores.value.anio = ''
       }
       break
+    case 'nro_chasis':
+      if (valor && valor.length > 30) {
+        errores.value.nro_chasis = 'El nro. de chasis no puede exceder los 30 caracteres'
+      } else {
+        errores.value.nro_chasis = ''
+      }
+      break
+    case 'nro_motor':
+      if (valor && valor.length > 30) {
+        errores.value.nro_motor = 'El nro. de motor no puede exceder los 30 caracteres'
+      } else {
+        errores.value.nro_motor = ''
+      }
+      break
+    case 'color':
+      if (valor && valor.length > 20) {
+        errores.value.color = 'El color no puede exceder los 20 caracteres'
+      } else {
+        errores.value.color = ''
+      }
+      break
     case 'cilindrada':
       if (valor) {
         if (!/^\d+$/.test(String(valor))) {
           errores.value.cilindrada = 'La cilindrada debe ser un valor numérico'
-        } else if (parseInt(valor) < 125) {
-          errores.value.cilindrada = 'La cilindrada mínima es 125cc'
+        } else if (parseInt(valor) < 50) {
+          errores.value.cilindrada = 'La cilindrada mínima es 50cc'
+        } else if (valor.length > 5) {
+          errores.value.cilindrada = 'La cilindrada no puede exceder los 5 dígitos'
         } else {
           errores.value.cilindrada = ''
         }
@@ -146,7 +179,7 @@ function validar() {
   const hayErrores = Object.values(errores.value).some(error => error !== '')
   if (hayErrores) {
     const listaErrores = Object.values(errores.value).filter(e => e !== '').join('\n')
-    alert('Por favor corrija los siguientes errores:\n\n' + listaErrores)
+    toast.error('Por favor corrija los errores en el formulario')
     return false
   }
 
@@ -162,12 +195,16 @@ async function guardar() {
   try {
     if (esEdicion.value) {
       await store.actualizar(props.motocicleta.id_motocicleta, form.value)
+      toast.success('Motocicleta actualizada exitosamente')
     } else {
       await store.crear(form.value)
+      toast.success('Motocicleta registrada exitosamente')
     }
     emit('cerrar')
   } catch (error) {
-    mensajeError.value = error.response?.data?.message || 'Error al guardar motocicleta'
+    const errorMsg = error.response?.data?.message || 'Error al guardar motocicleta'
+    mensajeError.value = errorMsg
+    toast.error(errorMsg)
   } finally {
     enviando.value = false
   }
@@ -175,7 +212,7 @@ async function guardar() {
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="emit('cerrar')">
+  <div class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
         <h2>{{ esEdicion ? 'Editar Motocicleta' : 'Nueva Motocicleta' }}</h2>
@@ -203,30 +240,33 @@ async function guardar() {
           </div>
           <div class="campo" :class="{ 'has-error': errores.marca }">
             <label for="marca">Marca</label>
-            <input id="marca" v-model="form.marca" type="text" @keypress="soloLetrasYSimbolos" />
+            <input id="marca" v-model="form.marca" type="text" @keypress="soloLetrasYSimbolos" maxlength="30" />
             <p v-if="errores.marca" class="field-error">{{ errores.marca }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.modelo }">
             <label for="modelo">Modelo</label>
-            <input id="modelo" v-model="form.modelo" type="text" @keypress="soloAlfanumerico" />
+            <input id="modelo" v-model="form.modelo" type="text" @keypress="soloAlfanumerico" maxlength="30" />
             <p v-if="errores.modelo" class="field-error">{{ errores.modelo }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.anio }">
             <label for="anio">Año</label>
-            <input id="anio" v-model="form.anio" type="number" min="1900" :max="maxYear" @keypress="soloNumeros" />
+            <input id="anio" v-model="form.anio" type="number" min="1900" :max="maxYear" @keypress="soloNumeros" oninput="if(this.value.length > 4) this.value = this.value.slice(0, 4);" />
             <p v-if="errores.anio" class="field-error">{{ errores.anio }}</p>
           </div>
-          <div class="campo">
+          <div class="campo" :class="{ 'has-error': errores.nro_chasis }">
             <label for="nro_chasis">Nro. Chasis</label>
             <input id="nro_chasis" v-model="form.nro_chasis" type="text" maxlength="30" @keypress="soloAlfanumerico" />
+            <p v-if="errores.nro_chasis" class="field-error">{{ errores.nro_chasis }}</p>
           </div>
-          <div class="campo">
+          <div class="campo" :class="{ 'has-error': errores.nro_motor }">
             <label for="nro_motor">Nro. Motor</label>
             <input id="nro_motor" v-model="form.nro_motor" type="text" maxlength="30" @keypress="soloAlfanumerico" />
+            <p v-if="errores.nro_motor" class="field-error">{{ errores.nro_motor }}</p>
           </div>
-          <div class="campo">
+          <div class="campo" :class="{ 'has-error': errores.color }">
             <label for="color">Color</label>
-            <input id="color" v-model="form.color" type="text" @keypress="soloLetrasYSimbolos" />
+            <input id="color" v-model="form.color" type="text" @keypress="soloLetrasYSimbolos" maxlength="20" />
+            <p v-if="errores.color" class="field-error">{{ errores.color }}</p>
           </div>
           <div class="campo" :class="{ 'has-error': errores.cilindrada }">
             <label for="cilindrada">Cilindrada</label>
@@ -234,14 +274,14 @@ async function guardar() {
             <p v-if="errores.cilindrada" class="field-error">{{ errores.cilindrada }}</p>
           </div>
         </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-cancelar" @click="emit('cerrar')">Cancelar</button>
-          <button type="submit" class="btn-guardar" :disabled="enviando">
-            {{ enviando ? 'Guardando...' : 'Guardar' }}
-          </button>
-        </div>
       </form>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancelar" @click="emit('cerrar')">Cancelar</button>
+        <button type="button" class="btn-guardar" :disabled="enviando" @click="guardar">
+          {{ enviando ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -260,14 +300,17 @@ async function guardar() {
 
 .modal-card {
   width: 100%;
-  max-width: 640px;
+  max-width: 700px;
+  max-height: 90vh;
   background: #ffffff;
   border-radius: 16px;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -290,6 +333,8 @@ async function guardar() {
 }
 
 .modal-form {
+  flex-grow: 1;
+  overflow-y: auto;
   padding: 24px;
 }
 
@@ -334,11 +379,13 @@ async function guardar() {
 }
 
 .modal-footer {
+  flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding: 0 24px 24px;
-  margin-top: 28px;
+  padding: 20px 24px;
+  border-top: 1px solid #E5E7EB;
+  background: #ffffff;
 }
 
 .btn-cancelar,

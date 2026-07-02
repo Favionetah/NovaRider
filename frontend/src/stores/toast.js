@@ -12,9 +12,7 @@ export const useToastStore = defineStore('toast', () => {
     mensaje.value = msg
     tipo.value = type
     visible.value = true
-    timeoutId = setTimeout(() => {
-      visible.value = false
-    }, 4000)
+    // El mensaje ahora se mantiene hasta que el usuario realice otra acción o lo cierre manualmente
   }
 
   function hide() {
@@ -22,5 +20,13 @@ export const useToastStore = defineStore('toast', () => {
     visible.value = false
   }
 
-  return { mensaje, tipo, visible, show, hide }
+  function success(msg) {
+    show(msg, 'success')
+  }
+
+  function error(msg) {
+    show(msg, 'error')
+  }
+
+  return { mensaje, tipo, visible, show, hide, success, error }
 })

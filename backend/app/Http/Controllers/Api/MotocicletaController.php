@@ -188,6 +188,18 @@ class MotocicletaController extends Controller
     public function destroy($id)
     {
         $motocicleta = Motocicleta::findOrFail($id);
+
+        // Verificar si tiene órdenes de trabajo activas (que no estén en 'Listo para entrega')
+        $ordenesActivas = $motocicleta->ordenesTrabajo()
+            ->whereNotIn('estado', ['Listo para entrega'])
+            ->exists();
+
+        if ($ordenesActivas) {
+            return response()->json([
+                'message' => 'No se puede desactivar la motocicleta porque tiene reparaciones pendientes o en curso.'
+            ], 422);
+        }
+
         $usuarioId = auth()->id();
 
         $motocicleta->update([

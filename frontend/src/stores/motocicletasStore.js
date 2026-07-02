@@ -67,11 +67,16 @@ export const useMotocicletasStore = defineStore('motocicletas', () => {
   }
 
   async function eliminar(id) {
-    await api.delete(`/motocicletas/${id}`)
-    const moto = motocicletas.value.find((m) => m.id_motocicleta === id)
-    if (moto) {
-      motocicletas.value = motocicletas.value.filter((m) => m.id_motocicleta !== id)
-      motocicletasInactivas.value.unshift({ ...moto, estadoA: false })
+    try {
+      await api.delete(`/motocicletas/${id}`)
+      const moto = motocicletas.value.find((m) => m.id_motocicleta === id)
+      if (moto) {
+        motocicletas.value = motocicletas.value.filter((m) => m.id_motocicleta !== id)
+        motocicletasInactivas.value.unshift({ ...moto, estadoA: false })
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Error al eliminar la motocicleta'
+      throw err
     }
   }
 
@@ -80,7 +85,9 @@ export const useMotocicletasStore = defineStore('motocicletas', () => {
     const moto = motocicletasInactivas.value.find((m) => m.id_motocicleta === id)
     if (moto) {
       motocicletasInactivas.value = motocicletasInactivas.value.filter((m) => m.id_motocicleta !== id)
-      motocicletas.value.unshift({ ...moto, estadoA: true })
+      motocicletas.value.push({ ...moto, estadoA: true })
+      // Mantener orden ascendente por ID como en el backend
+      motocicletas.value.sort((a, b) => a.id_motocicleta - b.id_motocicleta)
     }
   }
 

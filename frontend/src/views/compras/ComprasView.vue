@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useComprasStore } from '@/stores/compras'
 import { useProveedoresStore } from '@/stores/proveedores'
+import { useToastStore } from '@/stores/toast'
 import api from '@/services/api'
 import CompraFormModal from './CompraFormModal.vue'
 import ProveedorFormModal from './ProveedorFormModal.vue'
@@ -9,6 +10,7 @@ import VistaPreviaPdfModal from '@/views/usuarios/VistaPreviaPdfModal.vue'
 
 const comprasStore = useComprasStore()
 const provStore = useProveedoresStore()
+const toast = useToastStore()
 
 const tabActivo = ref('compras')
 const busqueda = ref('')
@@ -24,6 +26,8 @@ const proveedorEditando = ref(null)
 
 onMounted(async () => {
   await Promise.all([comprasStore.listar(), provStore.listar(), provStore.listarInactivos()])
+  if (comprasStore.error) toast.error(comprasStore.error)
+  if (provStore.error) toast.error(provStore.error)
   await nextTick()
   animarEntrada()
 })
@@ -209,12 +213,18 @@ async function onProveedorGuardado() {
   mostrarFormProveedor.value = false
   proveedorEditando.value = null
   await provStore.listar()
+  toast.success('Proveedor guardado correctamente')
   await nextTick()
   animarFilas()
 }
 
 async function eliminarProveedor(id) {
-  await provStore.eliminar(id)
+  try {
+    await provStore.eliminar(id)
+    toast.success('Proveedor desactivado correctamente')
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error al desactivar proveedor')
+  }
 }
 </script>
 
@@ -235,9 +245,6 @@ async function eliminarProveedor(id) {
         Nuevo Proveedor
       </button>
     </header>
-
-    <p v-if="comprasStore.error" class="mensaje-error">{{ comprasStore.error }}</p>
-    <p v-if="provStore.error" class="mensaje-error">{{ provStore.error }}</p>
 
     <div class="content-card">
       <div class="tabs">

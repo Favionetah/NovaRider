@@ -50,20 +50,32 @@ export const useClientesStore = defineStore('clientes', () => {
   }
 
   async function eliminar(id) {
-    await api.delete(`/clientes/${id}`)
-    const cliente = clientes.value.find((c) => c.id_cliente === id)
-    if (cliente) {
-      clientes.value = clientes.value.filter((c) => c.id_cliente !== id)
-      clientesInactivos.value.unshift({ ...cliente, estadoA: false })
+    try {
+      await api.delete(`/clientes/${id}`)
+      const cliente = clientes.value.find((c) => c.id_cliente === id)
+      if (cliente) {
+        clientes.value = clientes.value.filter((c) => c.id_cliente !== id)
+        clientesInactivos.value.unshift({ ...cliente, estadoA: false })
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Error al eliminar cliente'
+      throw err
     }
   }
 
   async function reactivar(id) {
-    await api.put(`/clientes/${id}/reactivar`)
-    const cliente = clientesInactivos.value.find((c) => c.id_cliente === id)
-    if (cliente) {
-      clientesInactivos.value = clientesInactivos.value.filter((c) => c.id_cliente !== id)
-      clientes.value.unshift({ ...cliente, estadoA: true })
+    try {
+      await api.put(`/clientes/${id}/reactivar`)
+      const cliente = clientesInactivos.value.find((c) => c.id_cliente === id)
+      if (cliente) {
+        clientesInactivos.value = clientesInactivos.value.filter((c) => c.id_cliente !== id)
+        clientes.value.push({ ...cliente, estadoA: true })
+        // Mantener orden ascendente por ID
+        clientes.value.sort((a, b) => a.id_cliente - b.id_cliente)
+      }
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Error al reactivar cliente'
+      throw err
     }
   }
 

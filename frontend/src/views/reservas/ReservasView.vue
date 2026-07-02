@@ -154,8 +154,6 @@ function estadoClase(estado) {
       </button>
     </header>
 
-    <p v-if="store.error" class="mensaje-error">{{ store.error }}</p>
-
     <div class="content-card">
       <div class="toolbar">
         <div class="search-wrapper">

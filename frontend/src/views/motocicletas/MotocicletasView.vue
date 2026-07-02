@@ -3,6 +3,8 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useClientesStore } from '@/stores/clientesStore'
 import { useMotocicletasStore } from '@/stores/motocicletasStore'
+import { useToastStore } from '@/stores/toast'
+import { useAuthStore } from '@/stores/auth'
 import MotocicletaFormModal from './MotocicletaFormModal.vue'
 import ConfirmarEliminarMotocicleta from './ConfirmarEliminarMotocicleta.vue'
 import HistorialVehiculoModal from './HistorialVehiculoModal.vue'
@@ -10,6 +12,8 @@ import HistorialVehiculoModal from './HistorialVehiculoModal.vue'
 const router = useRouter()
 const clienteStore = useClientesStore()
 const store = useMotocicletasStore()
+const toast = useToastStore()
+const auth = useAuthStore()
 
 const tabActivo = ref('activos')
 const busqueda = ref('')
@@ -21,7 +25,11 @@ const motoHistorial = ref(null)
 const mostrarHistorial = ref(false)
 
 onMounted(async () => {
-  await Promise.all([clienteStore.listar(), store.listar()])
+  await Promise.all([
+    clienteStore.listar(),
+    store.listar(),
+    store.listarInactivas()
+  ])
   await nextTick()
   animarEntrada()
 })
@@ -112,9 +120,15 @@ function confirmarEliminar(moto) {
 
 async function eliminarMotocicleta() {
   if (!motoEliminar.value) return
-  await store.eliminar(motoEliminar.value.id_motocicleta)
-  motoEliminar.value = null
-  mostrarConfirmacion.value = false
+  try {
+    await store.eliminar(motoEliminar.value.id_motocicleta)
+    motoEliminar.value = null
+    mostrarConfirmacion.value = false
+    toast.show('Motocicleta desactivada correctamente', 'success')
+  } catch (error) {
+    const msg = error.response?.data?.message || 'Error al desactivar la motocicleta'
+    toast.show(msg, 'error')
+  }
 }
 
 function cancelarEliminar() {
@@ -123,7 +137,13 @@ function cancelarEliminar() {
 }
 
 async function reactivarMotocicleta(id) {
-  await store.reactivar(id)
+  try {
+    await store.reactivar(id)
+    toast.show('Motocicleta reactivada correctamente', 'success')
+  } catch (error) {
+    const msg = error.response?.data?.message || 'Error al reactivar la motocicleta'
+    toast.show(msg, 'error')
+  }
 }
 
 function exportarPdf() {
@@ -153,8 +173,6 @@ function cerrarHistorial() {
         <button class="btn-primario" @click="abrirCrear">Nueva Motocicleta</button>
       </div>
     </header>
-
-    <p v-if="store.error" class="mensaje-error">{{ store.error }}</p>
 
     <div class="content-card">
       <div class="tabs">
@@ -227,9 +245,11 @@ function cerrarHistorial() {
               <td>{{ moto.anio || '—' }}</td>
               <td>{{ moto.color || '—' }}</td>
               <td>
-                <button class="btn-accion btn-historial" @click="verHistorial(moto)">Historial</button>
-                <button class="btn-accion btn-editar" @click="editarMotocicleta(moto)">Editar</button>
-                <button class="btn-accion btn-eliminar" @click="confirmarEliminar(moto)">Desactivar</button>
+                <div class="col-acciones">
+                  <button class="btn-accion btn-historial" @click="verHistorial(moto)">Historial</button>
+                  <button class="btn-accion btn-editar" @click="editarMotocicleta(moto)">Editar</button>
+                  <button class="btn-accion btn-eliminar" @click="confirmarEliminar(moto)">Desactivar</button>
+                </div>
               </td>
             </tr>
             <tr v-if="motosFiltradas.length === 0">
@@ -466,9 +486,15 @@ function cerrarHistorial() {
 }
 
 .tabla-motos td {
-  vertical-align: top;
+  vertical-align: middle;
   font-size: 14px;
   color: #1F2937;
+}
+
+.col-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .btn-accion {
@@ -478,7 +504,6 @@ function cerrarHistorial() {
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
-  margin-right: 8px;
 }
 
 .btn-historial {

@@ -148,10 +148,14 @@ async function confirmarEliminar(usuario) {
 }
 
 async function eliminarUsuario() {
-  await store.eliminar(usuarioEliminar.value.id_usuario)
-  mostrarConfirmacion.value = false
-  usuarioEliminar.value = null
-  toast.show('Usuario desactivado correctamente')
+  try {
+    await store.eliminar(usuarioEliminar.value.id_usuario)
+    mostrarConfirmacion.value = false
+    usuarioEliminar.value = null
+    toast.success('Usuario desactivado correctamente')
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error al desactivar usuario')
+  }
 }
 
 function cancelarEliminar() {
@@ -160,8 +164,12 @@ function cancelarEliminar() {
 }
 
 async function reactivarUsuario(id) {
-  await store.reactivar(id)
-  toast.show('Usuario reactivado correctamente')
+  try {
+    await store.reactivar(id)
+    toast.success('Usuario reactivado correctamente')
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'Error al reactivar usuario')
+  }
 }
 
 function exportarPdf() {
@@ -180,8 +188,6 @@ function exportarPdf() {
         Nuevo Usuario
       </button>
     </header>
-
-    <p v-if="store.error" class="mensaje-error">{{ store.error }}</p>
 
     <div class="stats-grid">
       <div class="stat-card">

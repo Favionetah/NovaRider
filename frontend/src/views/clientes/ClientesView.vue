@@ -2,11 +2,13 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useClientesStore } from '@/stores/clientesStore'
+import { useToastStore } from '@/stores/toast'
 import ClienteFormModal from './ClienteFormModal.vue'
 import ConfirmarEliminarCliente from './ConfirmarEliminarCliente.vue'
 
 const router = useRouter()
 const store = useClientesStore()
+const toast = useToastStore()
 
 const tabActivo = ref('activos')
 const busqueda = ref('')
@@ -124,9 +126,15 @@ function confirmarEliminar(cliente) {
 
 async function eliminarCliente() {
   if (!clienteEliminar.value) return
-  await store.eliminar(clienteEliminar.value.id_cliente)
-  clienteEliminar.value = null
-  mostrarConfirmacion.value = false
+  try {
+    await store.eliminar(clienteEliminar.value.id_cliente)
+    clienteEliminar.value = null
+    mostrarConfirmacion.value = false
+    toast.show('Cliente desactivado correctamente', 'success')
+  } catch (error) {
+    const msg = error.response?.data?.message || 'Error al desactivar el cliente'
+    toast.show(msg, 'error')
+  }
 }
 
 function cancelarEliminar() {
@@ -135,7 +143,13 @@ function cancelarEliminar() {
 }
 
 async function reactivarCliente(id) {
-  await store.reactivar(id)
+  try {
+    await store.reactivar(id)
+    toast.show('Cliente reactivado correctamente', 'success')
+  } catch (error) {
+    const msg = error.response?.data?.message || 'Error al reactivar el cliente'
+    toast.show(msg, 'error')
+  }
 }
 
 function irAMotocicletas() {
@@ -161,8 +175,6 @@ function exportarPdf() {
         </button>
       </div>
     </header>
-
-    <p v-if="store.error" class="mensaje-error">{{ store.error }}</p>
 
     <div class="content-card">
       <div class="tabs">
@@ -234,8 +246,10 @@ function exportarPdf() {
               <td>{{ cliente.telefono || '—' }}</td>
               <td>{{ cliente.nit || '—' }}</td>
               <td>
-                <button class="btn-accion btn-editar" @click="editarCliente(cliente)">Editar</button>
-                <button class="btn-accion btn-eliminar" @click="confirmarEliminar(cliente)">Desactivar</button>
+                <div class="col-acciones">
+                  <button class="btn-accion btn-editar" @click="editarCliente(cliente)">Editar</button>
+                  <button class="btn-accion btn-eliminar" @click="confirmarEliminar(cliente)">Desactivar</button>
+                </div>
               </td>
             </tr>
             <tr v-if="clientesFiltrados.length === 0">
@@ -467,9 +481,15 @@ function exportarPdf() {
 }
 
 .tabla-clientes td {
-  vertical-align: top;
+  vertical-align: middle;
   font-size: 14px;
   color: #1F2937;
+}
+
+.col-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .nombre-link {
@@ -497,7 +517,6 @@ function exportarPdf() {
   cursor: pointer;
   font-size: 13px;
   font-weight: 600;
-  margin-right: 8px;
 }
 
 .btn-editar {

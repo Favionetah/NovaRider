@@ -2,9 +2,11 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProgramacionesStore } from '@/stores/programaciones'
+import { useToastStore } from '@/stores/toast'
 
 const router = useRouter()
 const store = useProgramacionesStore()
+const toast = useToastStore()
 
 const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const busqueda = ref('')
@@ -34,6 +36,9 @@ function animarFilas() {
 
 onMounted(async () => {
   await store.obtenerGlobal()
+  if (store.error) {
+    toast.error(store.error)
+  }
   await nextTick()
   gsap.fromTo('.page-header', { y: -20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' })
   gsap.fromTo('.search-bar', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out', delay: 0.08 })
@@ -73,8 +78,6 @@ function irADetalle(idUsuario) {
     </div>
 
     <div v-if="store.loading" class="cargando">Cargando horarios...</div>
-
-    <div v-else-if="store.error" class="mensaje-error">{{ store.error }}</div>
 
     <div v-else-if="store.globalData" class="global-card">
       <div v-if="empleadosFiltrados.length === 0" class="sin-datos">
