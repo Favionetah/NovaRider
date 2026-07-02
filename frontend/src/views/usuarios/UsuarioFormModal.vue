@@ -169,7 +169,7 @@ async function guardar() {
     } else {
       await store.crear(form.value)
     }
-    emit('cerrar')
+    emit('guardado')
     } catch (err) {
       if (err.response?.status === 422 && err.response?.data?.errors) {
         limpiarErrores()
@@ -240,7 +240,7 @@ async function guardar() {
               <p v-if="errores.telefono" class="field-error">{{ errores.telefono }}</p>
             </div>
             <div class="campo" :class="{ 'has-error': errores.cargo }">
-              <label for="cargo">Cargo</label>
+              <label for="cargo">Cargo dentro del taller</label>
               <input id="cargo" v-model="form.cargo" type="text" required />
               <p v-if="errores.cargo" class="field-error">{{ errores.cargo }}</p>
             </div>

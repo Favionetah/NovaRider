@@ -4,6 +4,7 @@ import { onMounted, nextTick } from 'vue'
 defineProps({
   pdfBlobUrl: { type: String, default: '' },
   cargando: { type: Boolean, default: false },
+  titulo: { type: String, default: 'Vista Previa del Reporte' },
 })
 
 const emit = defineEmits(['cerrar', 'descargar'])
@@ -17,7 +18,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="vp-modal-overlay" @click.self="emit('cerrar')">
+  <div class="vp-modal-overlay">
     <div class="vp-modal-card">
       <div class="vp-modal-header">
         <div class="vp-header-left">
@@ -25,7 +26,7 @@ onMounted(async () => {
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             <polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <h2>Vista Previa — Reporte de Usuarios</h2>
+          <h2>{{ titulo }}</h2>
         </div>
         <button class="vp-btn-cerrar" @click="emit('cerrar')">&times;</button>
       </div>

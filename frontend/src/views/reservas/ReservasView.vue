@@ -4,6 +4,7 @@ import { useReservasStore } from '@/stores/reservas'
 import { useToastStore } from '@/stores/toast'
 import ReservaFormModal from './ReservaFormModal.vue'
 import EnvioFormModal from './EnvioFormModal.vue'
+import VistaPreviaPdfModal from '@/views/usuarios/VistaPreviaPdfModal.vue'
 
 const store = useReservasStore()
 const toast = useToastStore()
@@ -140,6 +141,59 @@ function estadoClase(estado) {
   const map = { pendiente: 'badge-pendiente', completada: 'badge-completada', enviado: 'badge-enviado', cancelada: 'badge-cancelada' }
   return map[estado] || ''
 }
+
+function totalReserva(r) {
+  return (r.detalles || []).reduce((s, d) => s + (d.producto?.precio_venta || 0) * d.cantidad_reservada, 0)
+}
+
+const generandoPdf = ref(false)
+const mostrarVistaPrevia = ref(false)
+const pdfBlobUrl = ref('')
+
+function construirParamsPdf() {
+  const params = {}
+  if (busqueda.value) params.busqueda = busqueda.value
+  if (filtroEstado.value) params.estado = filtroEstado.value
+  return params
+}
+
+async function exportarPdf() {
+  generandoPdf.value = true
+  mostrarVistaPrevia.value = true
+  try {
+    const { default: api } = await import('@/services/api')
+    const params = { ...construirParamsPdf(), preview: true }
+    const res = await api.get('/reservas/reporte/pdf', { params, responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    pdfBlobUrl.value = URL.createObjectURL(blob)
+  } catch {
+    pdfBlobUrl.value = ''
+  } finally {
+    generandoPdf.value = false
+  }
+}
+
+async function descargarPdf() {
+  try {
+    const { default: api } = await import('@/services/api')
+    const res = await api.get('/reservas/reporte/pdf', { params: construirParamsPdf(), responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `reporte_reservas_${new Date().toISOString().slice(0, 10)}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch { /* ignore */ }
+}
+
+function cerrarVistaPrevia() {
+  if (pdfBlobUrl.value) URL.revokeObjectURL(pdfBlobUrl.value)
+  pdfBlobUrl.value = ''
+  mostrarVistaPrevia.value = false
+}
 </script>
 
 <template>
@@ -173,6 +227,13 @@ function estadoClase(estado) {
           <option value="">Todos los estados</option>
           <option v-for="e in estados" :key="e" :value="e">{{ e }}</option>
         </select>
+
+        <button class="btn-exportar" @click="exportarPdf" :disabled="generandoPdf">
+          <svg viewBox="0 0 24 24" fill="none" class="icon-download">
+            <path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          {{ generandoPdf ? 'Generando...' : 'Exportar PDF' }}
+        </button>
       </div>
 
       <div class="tabla-wrapper">
@@ -191,14 +252,17 @@ function estadoClase(estado) {
           </thead>
           <tbody>
             <template v-for="r in store.items" :key="r.id_reserva">
-            <tr>
+            <tr :class="{ 'fila-pago-total': totalReserva(r) > 0 && r.monto_adelanto >= totalReserva(r) }">
               <td class="col-id">{{ r.id_reserva }}</td>
-              <td class="col-cli">{{ r.cliente?.nombre_completo || '—' }}</td>
+              <td class="col-cli">
+                <span v-if="totalReserva(r) > 0 && r.monto_adelanto >= totalReserva(r)" class="badge-100">Reserva con el 100% del pedido</span>
+                {{ r.cliente?.nombre_completo || '—' }}
+              </td>
               <td class="col-fecha">{{ r.fecha_solicitud }}</td>
               <td class="col-prods">{{ r.detalles?.length || 0 }}</td>
               <td class="col-adelanto">
                 <template v-if="r.monto_adelanto > 0">
-                  ${{ Number(r.monto_adelanto).toFixed(2) }}
+                  Bs {{ Number(r.monto_adelanto).toFixed(2) }}
                   <span class="metodo-pago">{{ r.adelanto_metodo_pago }}</span>
                 </template>
                 <span v-else class="sin-adelanto">—</span>
@@ -359,6 +423,15 @@ function estadoClase(estado) {
         </div>
       </div>
     </div>
+
+    <VistaPreviaPdfModal
+      v-if="mostrarVistaPrevia"
+      :pdf-blob-url="pdfBlobUrl"
+      :cargando="generandoPdf"
+      titulo="Vista Previa — Reporte de Reservas y Envíos"
+      @descargar="descargarPdf"
+      @cerrar="cerrarVistaPrevia"
+    />
   </div>
 </template>
 
@@ -399,6 +472,35 @@ function estadoClase(estado) {
 }
 
 .btn-nuevo:hover { background: #052E2A; }
+
+.btn-exportar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #FFFFFF;
+  color: #042D29;
+  border: 1.5px solid #042D29;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-exportar:hover:not(:disabled) {
+  background: #042D29;
+  color: #FFFFFF;
+}
+
+.btn-exportar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-download { width: 16px; height: 16px; }
 
 .icon-plus { width: 18px; height: 18px; }
 
@@ -545,6 +647,21 @@ function estadoClase(estado) {
 .badge-completada { background: #E8F5E9; color: #2E7D32; }
 .badge-enviado { background: #E3F2FD; color: #1565C0; }
 .badge-cancelada { background: #FFEBEE; color: #C62828; }
+
+.badge-100 {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #065F46;
+  background: #D1FAE5;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  width: fit-content;
+}
+
+.fila-pago-total { background: #F0FDF4 !important; }
+.fila-pago-total:hover { background: #DCFCE7 !important; }
 
 .metodo-pago {
   display: inline-block;

@@ -7,6 +7,7 @@ use App\Models\Envio;
 use App\Models\Producto;
 use App\Models\Reserva;
 use App\Traits\AuditoriaTrait;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -370,6 +371,65 @@ class ReservaController extends Controller
             DB::rollBack();
             return response()->json(['message' => 'Error al registrar envio: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function reportePdf(Request $request)
+    {
+        $busqueda = $request->input('busqueda', '');
+        $estado = $request->input('estado', '');
+
+        $query = Reserva::with('cliente', 'detalles.producto', 'envio')
+            ->where('estadoA', true)
+            ->orderBy('fecha_solicitud', 'desc')
+            ->orderBy('id_reserva', 'desc');
+
+        if ($estado) {
+            $query->where('estado', $estado);
+        }
+
+        if ($busqueda) {
+            $q = $busqueda;
+            $query->where(function ($sub) use ($q) {
+                $sub->where('id_reserva', $q)
+                    ->orWhereHas('cliente', function ($clientQ) use ($q) {
+                        $clientQ->whereRaw("LOWER(CONCAT(primer_nombre, ' ', IFNULL(segundo_nombre,''), ' ', apellido_paterno, ' ', IFNULL(apellido_materno,''))) LIKE ?", ["%{$q}%"])
+                            ->orWhereRaw("LOWER(ci) LIKE ?", ["%{$q}%"]);
+                    });
+            });
+        }
+
+        $reservas = $query->get()->map(fn($r) => $this->formatearReserva($r));
+
+        $totalAdelantos = $reservas->sum('monto_adelanto');
+        $reservasPorEstado = $reservas->groupBy('estado')->map(fn($g) => $g->count())->toArray();
+
+        $filtros = [
+            'busqueda' => $busqueda,
+            'estado' => $estado ?: 'Todos',
+        ];
+
+        $logoPath = public_path('img/Logo3_NovaRider.png');
+        $logoExists = file_exists($logoPath);
+        $logoBase64 = $logoExists ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) : '';
+
+        $pdf = Pdf::loadView('reportes.reservas_pdf', [
+            'reservas' => $reservas,
+            'filtros' => $filtros,
+            'fechaGeneracion' => now()->format('d/m/Y H:i'),
+            'usuarioGenera' => auth()->user()->username ?? 'Sistema',
+            'logoBase64' => $logoBase64,
+            'totalRegistros' => $reservas->count(),
+            'totalAdelantos' => $totalAdelantos,
+            'reservasPorEstado' => $reservasPorEstado,
+        ]);
+
+        $filename = 'reporte_reservas_' . now()->format('Y-m-d_His') . '.pdf';
+
+        if ($request->boolean('preview')) {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
     }
 
     private function formatearReserva(Reserva $reserva)

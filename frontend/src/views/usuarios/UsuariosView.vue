@@ -5,6 +5,7 @@ import { useUsuariosStore } from '@/stores/usuarios'
 import { useToastStore } from '@/stores/toast'
 import UsuarioFormModal from './UsuarioFormModal.vue'
 import ConfirmarEliminacion from './ConfirmarEliminacion.vue'
+import VistaPreviaPdfModal from './VistaPreviaPdfModal.vue'
 
 const router = useRouter()
 const store = useUsuariosStore()
@@ -119,11 +120,16 @@ function editarUsuario(usuario) {
   mostrarForm.value = true
 }
 
-function cerrarFormulario() {
+function guardadoFormulario() {
   const eraEdicion = !!usuarioEditando.value
   mostrarForm.value = false
   usuarioEditando.value = null
-  toast.show(eraEdicion ? 'Usuario editado correctamente' : 'Usuario creado correctamente')
+  toast.success(eraEdicion ? 'Usuario editado correctamente' : 'Usuario creado correctamente')
+}
+
+function cerrarFormulario() {
+  mostrarForm.value = false
+  usuarioEditando.value = null
 }
 
 const usuarioEliminar = ref(null)
@@ -172,8 +178,53 @@ async function reactivarUsuario(id) {
   }
 }
 
-function exportarPdf() {
-  window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/reportes/pdf?tipo=usuarios`, '_blank')
+const mostrarPreviewPdf = ref(false)
+const pdfBlobUrl = ref('')
+const pdfCargando = ref(false)
+
+async function exportarPdf() {
+  pdfCargando.value = true
+  mostrarPreviewPdf.value = true
+  try {
+    const { default: api } = await import('@/services/api')
+    const params = { preview: true }
+    if (busqueda.value) params.busqueda = busqueda.value
+    if (filtroRol.value) params.rol = filtroRol.value
+    if (tabActivo.value === 'inactivos') params.inactivos = true
+    const res = await api.get('/usuarios/reporte/pdf', { params, responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    pdfBlobUrl.value = URL.createObjectURL(blob)
+  } catch {
+    pdfBlobUrl.value = ''
+  } finally {
+    pdfCargando.value = false
+  }
+}
+
+async function descargarPdf() {
+  try {
+    const { default: api } = await import('@/services/api')
+    const params = {}
+    if (busqueda.value) params.busqueda = busqueda.value
+    if (filtroRol.value) params.rol = filtroRol.value
+    if (tabActivo.value === 'inactivos') params.inactivos = true
+    const res = await api.get('/usuarios/reporte/pdf', { params, responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `reporte_usuarios_${new Date().toISOString().slice(0, 10)}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch { /* ignore */ }
+}
+
+function cerrarPreviewPdf() {
+  if (pdfBlobUrl.value) URL.revokeObjectURL(pdfBlobUrl.value)
+  pdfBlobUrl.value = ''
+  mostrarPreviewPdf.value = false
 }
 </script>
 
@@ -385,6 +436,7 @@ function exportarPdf() {
       v-if="mostrarForm"
       :usuario="usuarioEditando"
       :roles="store.roles"
+      @guardado="guardadoFormulario"
       @cerrar="cerrarFormulario"
     />
 
@@ -395,6 +447,15 @@ function exportarPdf() {
       :ordenes="ordenesActivas"
       @confirmar="eliminarUsuario"
       @cancelar="cancelarEliminar"
+    />
+
+    <VistaPreviaPdfModal
+      v-if="mostrarPreviewPdf"
+      :pdf-blob-url="pdfBlobUrl"
+      :cargando="pdfCargando"
+      titulo="Vista Previa — Reporte de Usuarios"
+      @descargar="descargarPdf"
+      @cerrar="cerrarPreviewPdf"
     />
   </div>
 </template>

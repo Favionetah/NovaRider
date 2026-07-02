@@ -403,6 +403,7 @@ async function eliminarProveedor(id) {
       v-if="mostrarVistaPrevia"
       :pdf-blob-url="pdfBlobUrl"
       :cargando="generandoPdf"
+      titulo="Vista Previa — Reporte de Compras"
       @cerrar="cerrarVistaPrevia"
       @descargar="descargarPdf"
     />

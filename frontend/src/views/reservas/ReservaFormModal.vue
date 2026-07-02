@@ -114,6 +114,7 @@ async function guardar() {
   const errs = {}
   if (!form.value.id_cliente) errs.id_cliente = ['Seleccioná un cliente']
   if (!form.value.monto_adelanto || form.value.monto_adelanto < 1) errs.monto_adelanto = ['El monto del adelanto es requerido']
+  else if (form.value.monto_adelanto > totalEstimado.value) errs.monto_adelanto = [`El monto no puede exceder el total (Bs ${totalEstimado.value.toFixed(2)})`]
   if (!form.value.adelanto_metodo_pago) errs.adelanto_metodo_pago = ['Seleccioná un método de pago']
   if (form.value.fecha_expiracion && form.value.fecha_expiracion < minFechaExp.value) errs.fecha_expiracion = ['La expiración debe ser al menos un día después de hoy']
   if (form.value.detalles.length === 0) errs.detalles = ['Agregá al menos un producto']
@@ -200,6 +201,7 @@ async function guardar() {
               v-model.number="form.monto_adelanto"
               type="number"
               step="0.01"
+              :max="totalEstimado"
               placeholder="ej: 50"
               @blur="limpiarMonto"
               :class="{ 'input-error': errores.monto_adelanto }"

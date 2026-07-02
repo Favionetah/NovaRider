@@ -130,6 +130,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/reservas/{id}', [ReservaController::class, 'destroy']);
         Route::post('/reservas/{id}/convertir-venta', [ReservaController::class, 'convertirVenta']);
         Route::post('/reservas/{id}/registrar-envio', [ReservaController::class, 'registrarEnvio']);
+        Route::get('/reservas/reporte/pdf', [ReservaController::class, 'reportePdf']);
     });
 
     // --- Grupo Operativo de Taller (Roles 1, 3, 4) ---
